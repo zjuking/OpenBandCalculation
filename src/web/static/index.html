@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OBPDS · III-V 异质结能带与输运仿真</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">OBPDS</span>
+    <span class="tagline">Open Band Parameters Device Simulator · 一维 III-V 异质结能带 / 输运</span>
+  </div>
+  <div class="topbar-right">
+    <span id="status" class="status">就绪</span>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ───────────────────────── 左栏：器件构建 ───────────────────────── -->
+  <aside class="panel side">
+
+    <section class="block">
+      <h2>预设结构</h2>
+      <select id="preset" class="full"></select>
+      <p class="hint">选择一个示例结构作为起点。</p>
+    </section>
+
+    <section class="block">
+      <h2>外延层栈 <span class="sub">自左（表面）向右</span></h2>
+      <div id="layers" class="layers"></div>
+      <div class="row gap">
+        <button id="addLayer" class="btn ghost">+ 添加层</button>
+      </div>
+      <p class="hint">
+        本程序沿用 OBPDS 的极性约定：<b>p 型在左</b>时，左侧端子加正偏压为正向。
+        掺杂符号：正 = 受主（p），负 = 施主（n）。
+      </p>
+    </section>
+
+    <section class="block">
+      <h2>接触</h2>
+      <div class="contact">
+        <label>左</label>
+        <select id="cLeft">
+          <option value="ohmic">欧姆</option>
+          <option value="schottky">肖特基</option>
+        </select>
+        <input id="wfLeft" type="number" step="0.05" value="4.90" title="功函数 (eV)">
+      </div>
+      <div class="contact">
+        <label>右</label>
+        <select id="cRight">
+          <option value="ohmic">欧姆</option>
+          <option value="schottky">肖特基</option>
+        </select>
+        <input id="wfRight" type="number" step="0.05" value="4.90" title="功函数 (eV)">
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>全局参数</h2>
+      <div class="grid2">
+        <label>温度 T (K)
+          <input id="T" type="number" value="300" step="10" min="4" max="800">
+        </label>
+        <label>网格 N
+          <input id="N" type="number" value="400" step="100" min="50" max="4000">
+        </label>
+        <label>统计近似
+          <select id="approx">
+            <option value="kane">Kane 非抛物 + FD</option>
+            <option value="fermi-dirac">费米-狄拉克（抛物）</option>
+            <option value="boltzmann">玻尔兹曼</option>
+          </select>
+        </label>
+        <label>偏置 V (V)
+          <input id="V" type="number" value="0.00" step="0.05">
+        </label>
+        <label>p 端在
+          <select id="pSide">
+            <option value="left">左侧</option>
+            <option value="right">右侧</option>
+          </select>
+        </label>
+        <label class="chk"
+               title="只在「平衡能带」模式下生效：自洽求解 Schrödinger–Poisson，电子密度换成束缚子带 + 连续谱修正">
+          <input id="quantum" type="checkbox">
+          量子修正（自洽 Schrödinger–Poisson）
+        </label>
+        <label title="求解的 Schrödinger 本征态个数，束缚态之外的高能态会并入连续谱">子带数
+          <input id="nStates" type="number" value="8" step="1" min="2" max="32">
+        </label>
+        <label title="外延层的参考晶格常数来源；赝晶应变按此计算，生长方向取 [001]">衬底
+          <select id="substrate">
+            <option value="">无（各层取自身晶格常数）</option>
+          </select>
+        </label>
+        <label title="留空则用所选材料的组分；填写则直接指定衬底晶格常数 (Å)">衬底 a (Å)
+          <input id="substrateA" type="number" placeholder="自动">
+        </label>
+        <label>τ<sub>n</sub> (s)
+          <input id="tauN" type="number" value="1e-7" step="1e-7">
+        </label>
+        <label>τ<sub>p</sub> (s)
+          <input id="tauP" type="number" value="1e-7" step="1e-7">
+        </label>
+      </div>
+      <label class="slider">B<sub>rad</sub> = <b id="bradVal">1.0e-10</b> cm³/s
+        <input id="brad" type="range" min="-14" max="-7" step="0.1" value="-10">
+      </label>
+    </section>
+
+    <section class="block sticky-actions">
+      <div class="row">
+        <button id="runEq"  class="btn primary wide">平衡能带</button>
+      </div>
+      <div class="row">
+        <button id="runZC" class="btn wide">零电流（偏置）</button>
+      </div>
+      <div class="row">
+        <button id="runDD" class="btn wide">漂移-扩散（解电流）</button>
+      </div>
+      <div class="row">
+        <button id="runIV" class="btn accent wide">I–V 扫描</button>
+      </div>
+      <div class="row">
+        <button id="runCV" class="btn accent wide">C–V 扫描</button>
+      </div>
+    </section>
+  </aside>
+
+  <!-- ───────────────────────── 右栏：结果 ───────────────────────── -->
+  <section class="panel main">
+    <nav class="tabs">
+      <button class="tab active" data-tab="band">能带图</button>
+      <button class="tab" data-tab="carrier">载流子 / 场</button>
+      <button class="tab" data-tab="wf">波函数 |ψ|²</button>
+      <button class="tab" data-tab="iv">I–V</button>
+      <button class="tab" data-tab="cv">C–V</button>
+      <button class="tab" data-tab="table">层参数</button>
+    </nav>
+
+    <div class="tabbody">
+      <div id="tab-band" class="tabpage active">
+        <div class="chartwrap"><div id="chartBand" class="chart"></div></div>
+        <div class="legend" id="legendBand"></div>
+        <div class="readout" id="readBand"></div>
+      </div>
+
+      <div id="tab-carrier" class="tabpage">
+        <div class="chartwrap"><div id="chartCarrier" class="chart"></div></div>
+        <div class="legend" id="legendCarrier"></div>
+        <div class="readout" id="readCarrier"></div>
+      </div>
+
+      <div id="tab-wf" class="tabpage">
+        <div class="chartwrap"><div id="chartWF" class="chart"></div></div>
+        <div class="legend" id="legendWF"></div>
+        <div class="readout" id="readWF"></div>
+      </div>
+
+      <div id="tab-iv" class="tabpage">
+        <div class="sweepbar">
+          <label>起点 <input id="ivStart" type="number" value="-1" step="0.1"></label>
+          <label>终点 <input id="ivStop"  type="number" value="1"  step="0.1"></label>
+          <label>点数 <input id="ivNum"   type="number" value="41" step="2" min="5" max="201"></label>
+          <label class="chk"><input id="ivLog" type="checkbox" checked> |J| 对数轴</label>
+        </div>
+        <div class="chartwrap"><div id="chartIV" class="chart"></div></div>
+        <div class="readout" id="readIV"></div>
+      </div>
+
+      <div id="tab-cv" class="tabpage">
+        <div class="chartwrap"><div id="chartCV" class="chart"></div></div>
+        <div class="readout" id="readCV"></div>
+      </div>
+
+      <div id="tab-table" class="tabpage">
+        <div id="layerTable" class="tablewrap"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="tip" class="tip"></div>
+<div id="busy" class="busy"><div class="bar"><i></i></div><span id="busyText">计算中…</span></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

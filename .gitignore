@@ -1,0 +1,37 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+.venv/
+venv/
+
+# Paper files — not pushed to GitHub yet
+paper/
+
+# session / IDE state
+.workbuddy/
+.workbuddy-ai/
+
+# scratch
+*.log
+
+# LaTeX build artefacts (paper/cpc/data/*.out are test logs -- keep those)
+*.aux
+*.bbl
+*.blg
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# hyperref bookmarks, produced next to the .tex
+paper/cpc/manuscript.out
+
+# submission bundle (regenerate with paper/cpc/make_submission.py)
+paper/cpc/dist/
+
+# figure bitmaps are for local inspection; regenerate with --png
+paper/cpc/figures/*.png
+*.spl

@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "obpds"
+version = "2.0.0"
+description = (
+    "Open Band Parameters Device Simulator - 1D electrostatic and "
+    "drift-diffusion solver for III-V semiconductor heterostructures"
+)
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "AGPL-3.0-or-later" }
+authors = [{ name = "obpds contributors" }]
+keywords = [
+    "semiconductor", "TCAD", "heterostructure", "poisson",
+    "drift-diffusion", "III-V", "Fermi-Dirac", "band diagram",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+web = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "pydantic>=2.6",
+]
+dev = ["pytest>=7.4"]
+
+[project.urls]
+Homepage = "https://github.com/scott-maddox/obpds"
+
+[project.scripts]
+obpds-web = "web.app:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"web" = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
