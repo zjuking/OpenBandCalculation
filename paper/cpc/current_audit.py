@@ -142,6 +142,26 @@ def audit(V, N=1000):
     }
 
 
+def mesh_stability(V, Ns=(400, 800, 1600, 3200)):
+    """
+    Reported terminal current and its spread vs mesh size ``N`` at one bias.
+
+    A trustworthy current is stable under mesh refinement.  One that is below
+    the arithmetic noise floor does the opposite: the depletion-region median
+    chases rounding noise, so ``J`` and ``J_spread`` jump around as ``N``
+    changes instead of settling.  This is the mesh-side counterpart of the
+    single-``N`` ``J_spread`` diagnostic, and it is what separates "small" from
+    "unresolvable".
+    """
+    rows = []
+    for N in Ns:
+        s = pn(N).get_drift_diffusion(V, N=N)
+        rows.append({"N": N, "J": float(s.J), "J_spread": float(s.J_spread),
+                     "J_reliable": bool(s.J_reliable),
+                     "converged": bool(s.converged)})
+    return rows
+
+
 def main():
     out = []
     for V in (-1.0, -0.5, 0.0, 0.1, 0.4, 0.6, 0.8):
@@ -164,6 +184,27 @@ def main():
     print("  (e-/h-imbal: relative deviation of the electron / hole telescoping\n"
           "   sum from q*sum R*h; tot-imbal: total-current conservation)")
     print(f"\nwrote {path}")
+
+    # mesh-density stability of the reported current
+    biases = (-1.0, -0.5, 0.0, 0.1, 0.4, 0.6, 0.8)
+    mesh = [{"V": V, "mesh": mesh_stability(V)} for V in biases]
+    mpath = os.path.join(HERE, "data", "current_mesh.json")
+    with open(mpath, "w", encoding="utf-8") as f:
+        json.dump(mesh, f, indent=2)
+
+    print("\n=== mesh-density stability of the reported current ===")
+    ns = (400, 800, 1600, 3200)
+    print(f"{'V':>6} " + " ".join(f"{'N=' + str(n):>22}" for n in ns))
+    for r in mesh:
+        line = f"{r['V']:>6} "
+        for row in r["mesh"]:
+            line += f"{row['J']:>22.4e}"
+        print(line)
+        flag = f"{'':>6} "
+        for row in r["mesh"]:
+            flag += f"{('reliable' if row['J_reliable'] else 'UNRELIABLE'):>22}"
+        print(flag)
+    print(f"wrote {mpath}")
 
 
 if __name__ == "__main__":

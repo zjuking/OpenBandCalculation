@@ -131,6 +131,7 @@ class TransportSolution:
                      if getattr(self, k, None) is not None})
         base["J"] = self.J
         base["J_spread"] = getattr(self, "J_spread", None)
+        base["J_reliable"] = getattr(self, "J_reliable", None)
         base["Jn_contact"] = self.Jn_contact
         base["Jp_contact"] = self.Jp_contact
         base["converged"] = self.converged
@@ -604,12 +605,20 @@ def solve_drift_diffusion(m: Model, V: float, approx="kane",
     mask = both <= 1e3 * ni_link
     J = float(np.median(Jtot[mask])) if mask.any() else float(np.median(Jtot))
     spread = float(np.abs(Jtot - J).max() / max(abs(J), 1e-300))
+    # A terminal current whose worst link strays by more than the reported
+    # value itself is below the arithmetic noise floor: the median is then not
+    # a trustworthy prediction, and callers get an explicit flag rather than a
+    # six-digit number that is mostly noise.  The threshold is conservative
+    # and tunable; it marks the reverse-bias and weak-forward points
+    # (spread 75..373) as unreliable while leaving 0.6 V (0.012) and 0.8 V
+    # (2e-4) clean.
+    J_reliable = spread <= 1.0
 
     sol = evaluate(m, psi, Fp, Fn, V, approx)
     return TransportSolution(
         solution=sol, psi=psi, Fn=Fn, Fp=Fp, n=n, p=p,
         Jn=Jn, Jp=Jp, Jtotal=Jtot,
-        J=J, J_spread=spread,
+        J=J, J_spread=spread, J_reliable=J_reliable,
         Jn_contact=float(Jn[0]), Jp_contact=float(Jp[0]),
         R_srh=r_srh, R_rad=r_rad, R=R,
         converged=converged, gummel_iterations=iters,

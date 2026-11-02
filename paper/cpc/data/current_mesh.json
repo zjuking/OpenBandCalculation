@@ -1,0 +1,233 @@
+[
+  {
+    "V": -1.0,
+    "mesh": [
+      {
+        "N": 400,
+        "J": -9.500537954167851e-12,
+        "J_spread": 148.4085054052394,
+        "J_reliable": false,
+        "converged": true
+      },
+      {
+        "N": 800,
+        "J": -9.503737813681739e-12,
+        "J_spread": 298.09073070717574,
+        "J_reliable": false,
+        "converged": true
+      },
+      {
+        "N": 1600,
+        "J": -9.50519498702077e-12,
+        "J_spread": 597.4640311581205,
+        "J_reliable": false,
+        "converged": true
+      },
+      {
+        "N": 3200,
+        "J": -9.505558724059622e-12,
+        "J_spread": 1196.2565193392759,
+        "J_reliable": false,
+        "converged": true
+      }
+    ]
+  },
+  {
+    "V": -0.5,
+    "mesh": [
+      {
+        "N": 400,
+        "J": -5.283898153832349e-12,
+        "J_spread": 133.31950680412612,
+        "J_reliable": false,
+        "converged": true
+      },
+      {
+        "N": 800,
+        "J": -5.2875893616343055e-12,
+        "J_spread": 267.78788276761975,
+        "J_reliable": false,
+        "converged": true
+      },
+      {
+        "N": 1600,
+        "J": -5.289163662486507e-12,
+        "J_spread": 536.7520609728064,
+        "J_reliable": false,
+        "converged": true
+      },
+      {
+        "N": 3200,
+        "J": -5.289556591466126e-12,
+        "J_spread": 1074.7605072678662,
+        "J_reliable": false,
+        "converged": true
+      }
+    ]
+  },
+  {
+    "V": 0.0,
+    "mesh": [
+      {
+        "N": 400,
+        "J": 0.0,
+        "J_spread": 0.0,
+        "J_reliable": true,
+        "converged": true
+      },
+      {
+        "N": 800,
+        "J": 0.0,
+        "J_spread": 0.0,
+        "J_reliable": true,
+        "converged": true
+      },
+      {
+        "N": 1600,
+        "J": 0.0,
+        "J_spread": 0.0,
+        "J_reliable": true,
+        "converged": true
+      },
+      {
+        "N": 3200,
+        "J": 0.0,
+        "J_spread": 0.0,
+        "J_reliable": true,
+        "converged": true
+      }
+    ]
+  },
+  {
+    "V": 0.1,
+    "mesh": [
+      {
+        "N": 400,
+        "J": 5.430528899327078e-12,
+        "J_spread": 31.67328045441883,
+        "J_reliable": false,
+        "converged": true
+      },
+      {
+        "N": 800,
+        "J": 5.769475532842899e-12,
+        "J_spread": 60.584546208559715,
+        "J_reliable": false,
+        "converged": true
+      },
+      {
+        "N": 1600,
+        "J": 5.785642783027635e-12,
+        "J_spread": 121.90167867651628,
+        "J_reliable": false,
+        "converged": true
+      },
+      {
+        "N": 3200,
+        "J": 5.788456795680065e-12,
+        "J_spread": 244.76059144955732,
+        "J_reliable": false,
+        "converged": true
+      }
+    ]
+  },
+  {
+    "V": 0.4,
+    "mesh": [
+      {
+        "N": 400,
+        "J": 2.463229413537493e-09,
+        "J_spread": 0.1770864957566065,
+        "J_reliable": true,
+        "converged": true
+      },
+      {
+        "N": 800,
+        "J": 2.570663865898053e-09,
+        "J_spread": 0.4459170430349488,
+        "J_reliable": true,
+        "converged": true
+      },
+      {
+        "N": 1600,
+        "J": 2.577035471524244e-09,
+        "J_spread": 0.9765262831560316,
+        "J_reliable": true,
+        "converged": true
+      },
+      {
+        "N": 3200,
+        "J": 2.5783089700628253e-09,
+        "J_spread": 1.230454802253588,
+        "J_reliable": false,
+        "converged": true
+      }
+    ]
+  },
+  {
+    "V": 0.6,
+    "mesh": [
+      {
+        "N": 400,
+        "J": 2.7931267481426515e-07,
+        "J_spread": 0.004143021385753154,
+        "J_reliable": true,
+        "converged": true
+      },
+      {
+        "N": 800,
+        "J": 2.8297278999757273e-07,
+        "J_spread": 0.008882746745947457,
+        "J_reliable": true,
+        "converged": true
+      },
+      {
+        "N": 1600,
+        "J": 2.832817908444941e-07,
+        "J_spread": 0.017344778422931164,
+        "J_reliable": true,
+        "converged": true
+      },
+      {
+        "N": 3200,
+        "J": 2.8335116535016347e-07,
+        "J_spread": 0.03710458332062968,
+        "J_reliable": true,
+        "converged": true
+      }
+    ]
+  },
+  {
+    "V": 0.8,
+    "mesh": [
+      {
+        "N": 400,
+        "J": 0.00033197183540273817,
+        "J_spread": 1.8711536820666184e-05,
+        "J_reliable": true,
+        "converged": true
+      },
+      {
+        "N": 800,
+        "J": 0.0003320732127156844,
+        "J_spread": 1.9477248797033292e-05,
+        "J_reliable": true,
+        "converged": true
+      },
+      {
+        "N": 1600,
+        "J": 0.0003320850992074864,
+        "J_spread": 1.979836892562496e-05,
+        "J_reliable": true,
+        "converged": true
+      },
+      {
+        "N": 3200,
+        "J": 0.00033208786203518304,
+        "J_spread": 3.396058619263483e-05,
+        "J_reliable": true,
+        "converged": true
+      }
+    ]
+  }
+]

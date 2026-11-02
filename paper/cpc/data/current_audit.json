@@ -52,7 +52,7 @@
   },
   {
     "V": -0.5,
-    "J_reported": -5.288345508019273e-12,
+    "J_reported": -5.288345508019272e-12,
     "J_spread": 335.0209019021462,
     "converged": true,
     "gummel_iterations": 17,
@@ -154,8 +154,8 @@
   },
   {
     "V": 0.1,
-    "J_reported": 5.7789618665853785e-12,
-    "J_spread": 75.8735306151883,
+    "J_reported": 5.778961866316213e-12,
+    "J_spread": 75.87353061876884,
     "converged": true,
     "gummel_iterations": 2,
     "median_rule": [
