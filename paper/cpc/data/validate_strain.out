@@ -95,4 +95,12 @@
   [PASS] self-substrate leaves the model untouched    got  0 eV  want  0 eV  (rel 0.00e+00, tol 1e-12)
   [PASS] self-substrate leaves VBO untouched          got  0 eV  want  0 eV  (rel 0.00e+00, tol 1e-12)
 
+=== Layer-level parameter overrides ===========================
+  [PASS] VBO override lands where asked               got -0.1 eV  want -0.1 eV  (rel 2.78e-16, tol 1e-09)
+  [PASS] VBO override carries the conduction edge     got -0.1 eV  want -0.1 eV  (rel 2.78e-16, tol 1e-09)
+  [PASS] VBO override leaves the gap alone            got  0 eV  want  0 eV  (rel 0.00e+00, tol 1e-12)
+  [PASS] a_c override removes the hydrostatic shift   got -0.101853 eV  want -0.1019 eV  (rel 4.60e-04, tol 1e-02)
+  [PASS] unknown override key raises                  got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] non-overridable key raises                   got  1  want  1  (rel 0.00e+00, tol 1e-09)
+
 ALL STRAIN CHECKS PASSED

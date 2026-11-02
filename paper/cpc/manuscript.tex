@@ -61,8 +61,12 @@ the non-parabolic multi-valley statistics of the original.
 
 The numerical content is what we report. Scharfetter--Gummel
 fluxes are written in a generalised-potential form that is an identity for
-arbitrary statistics and, after a cancellation-free rearrangement, returns an
-identically zero equilibrium current instead of a difference of large numbers.
+arbitrary statistics; after a cancellation-free rearrangement the
+equilibrium current vanishes by construction (the vanishing factor is
+computed from the quasi-Fermi level itself), instead of emerging as a
+difference of large numbers. The rearrangement is an algebraic identity, not
+a new discretisation, and we state that distinction explicitly in
+Section~\ref{sec:sg}.
 In III--V materials the carrier densities inside one device span more than
 twenty decades, so the discrete current in a quasi-neutral region is below the
 round-off of the stored quasi-Fermi levels; the program therefore reads the
@@ -71,10 +75,12 @@ of the worst link, which tells the user when the value is arithmetic noise.
 Quantisation uses the BenDaniel--Duke operator on the same grid, and strain a
 closed-form Bir--Pikus Hamiltonian with spin--orbit coupling.
 
-Every model is held to closed-form results by 196 assertions, including
-negative controls that require the correction to vanish where nothing
-confines. A representative bias point converges in two Gummel sweeps and
-about \SI{1.5}{s}.
+Every model is held to closed-form results by a test suite whose checks are
+reported by kind---analytic and asymptotic limits, discrete-operator
+properties, and physical-scale regression---rather than as a single
+undifferentiated count, with a separate end-to-end test for the web API
+contract (Section~\ref{sec:verification}). A representative bias point
+converges in two Gummel sweeps and about \SI{1.5}{s}.
 
 % ---------------------------------------------------------------------------
 %  PROGRAM SUMMARY -- mandatory for CPiP articles.
@@ -93,9 +99,13 @@ v3.0; the licence is therefore retained and cannot be replaced by one of the
 licences on the standard list. \\
 {\em Programming language:} Python 3 (>= 3.10); JavaScript/HTML for the
 browser front end \\
-{\em Supplementary material:} Test suite (196 assertions against closed-form
-solutions), a comprehensive example run with its expected output, the scripts
-that regenerate every figure and table of this paper, and the web front end. \\
+{\em Supplementary material:} A verification suite whose checks are
+classified by kind (analytic/asymptotic, discrete-operator, and
+physical-scale regression) together with a separate web-API contract test,
+a comprehensive example run with its expected output, the scripts that
+regenerate every figure and table of this paper (including the current
+conservation, mesh-convergence and strain-sensitivity audits), and the web
+front end. \\
 {\em Nature of problem (approx.\ 50--250 words):}
 One-dimensional band-diagram and terminal-current calculations for III--V
 heterostructures couple a strongly nonlinear Poisson equation to degenerate,
@@ -116,8 +126,9 @@ uniform grid with the face permittivity taken as the harmonic mean of adjacent
 nodes, so that the $\varepsilon'\psi'$ term is retained at heterointerfaces.
 The Poisson system is solved by Newton's method, damped along Bank--Rose
 lines [3], with every row equilibrated before the solve. Drift--diffusion uses Scharfetter--Gummel fluxes [1] in a
-generalised-potential form that is exact for any statistics and, rearranged to
-be cancellation-free, gives an identically zero equilibrium current.
+generalised-potential form that reduces to the standard discretisation under
+Boltzmann statistics and, rearranged to be cancellation-free, gives a
+zero equilibrium current without subtracting nearly equal terms.
 Continuity is solved by Newton with the same damping and coupled to Poisson by
 Gummel iteration [2] from an analytic minority-carrier profile, so that a bias
 point converges in two or three sweeps from a cold start. Confinement uses a
@@ -136,7 +147,8 @@ capacitance is classical. Unusual features: (i) the terminal
 current is read from the depletion region and reported together with
 \texttt{J\_spread}, the relative deviation of the worst discrete link, so that
 a user can see when the reported value is noise;
-(ii) the equilibrium current is exactly zero rather than merely small;
+(ii) the equilibrium current is zero by construction of the
+cancellation-free flux rather than a residual of a subtraction;
 (iii) every physical model is exercised against closed-form results, including
 negative controls; (iv) a browser front end serves the same solver, so no
 installation is needed for classroom use; (v) the program flags the cases in which its own model is invalid, for example a
@@ -178,7 +190,7 @@ Bandprof~\cite{Frensley} and its descendants, including the Open Band
 Parameters Device Simulator (OBPDS)~\cite{Maddox2015} that this paper starts
 from, solve the nonlinear Poisson equation for a prescribed pair of
 quasi-Fermi levels---the \emph{zero-current approximation}---and draw the
-result~\cite{Frensley1988}. That approximation is legitimate for a band diagram and useless for a
+result~\cite{Frensley1988}. That approximation is legitimate for a band diagram and of no use for a
 current--voltage curve: with the quasi-Fermi levels fixed there is no equation
 from which a current could be obtained.
 
@@ -223,6 +235,11 @@ The nearest contemporary open implementation is Aestimo
 Schr\"odinger--Poisson problem for layered heterostructures and, in its
 current release, also offers drift--diffusion routes, a desktop graphical
 interface and a wider material database that includes the nitrides. The
+comparison below is drawn from Aestimo's published description and
+documentation and is qualitative, not a numerical benchmark: the two codes
+share no common parameter set, quantum model or contact convention that would
+make a like-for-like table honest without a dedicated study, so we do not
+present one. The
 overlap is real---both codes are one-dimensional, both couple the same three
 equations, and a reader is entitled to ask which to use. Three differences
 decide it. Aestimo's model documentation states that the current combined
@@ -242,13 +259,17 @@ take it.
 The contributions of the present work are the following.
 
 \begin{enumerate}
-\item A drift--diffusion formulation for non-Boltzmann statistics. The
-      Scharfetter--Gummel flux is written in terms of a generalised potential
-      that is an identity for any statistics, and rearranged so that the two
-      large terms that cancel at equilibrium are eliminated analytically
-      rather than numerically. The equilibrium current is then exactly zero,
-      and the same expression carries the band offsets, the density-of-states
+\item A numerically stable drift--diffusion formulation for non-Boltzmann
+      statistics. The Scharfetter--Gummel flux is written in terms of a
+      generalised potential that is an identity for any statistics, and
+      rearranged so that the two large terms that cancel at equilibrium are
+      eliminated analytically rather than numerically. This is an algebraic
+      rearrangement of the standard discretisation---we do not claim a new
+      discretisation---and it makes the equilibrium current zero by
+      construction while carrying the band offsets, the density-of-states
       gradients and the degeneracy correction without separate terms.
+      Section~\ref{sec:sg} states precisely where the rearrangement is an
+      identity and where the Jacobian linearisation is an approximation.
 \item An explicit treatment of the numerical difficulty that III--V materials
       create. Because the minority density can be twenty decades below the
       majority density, the discrete current in a quasi-neutral region is
@@ -265,11 +286,14 @@ The contributions of the present work are the following.
 \item A closed-form Bir--Pikus treatment of the valence band with spin--orbit
       coupling, together with the three identities that make it checkable, and
       a strain model that reports the Matthews--Blakeslee critical thickness of every layer and flags the ones that exceed it.
-\item A verification suite of 196 assertions against closed-form solutions,
-      including negative controls: a classical $p$--$n$ junction must come back
-      unchanged when the quantum correction is switched on, a layer on its own
-      substrate must not be strained, and the equilibrium current must vanish
-      identically.
+\item A verification suite whose checks are reported by kind---analytic and
+      asymptotic limits, discrete-operator properties, and physical-scale
+      regression---together with negative controls that require the
+      correction to vanish where nothing confines, and a separate end-to-end
+      test of the web-API contract. The distinction matters: a classical
+      $p$--$n$ junction must come back unchanged when the quantum correction
+      is switched on, a layer on its own substrate must not be strained, and
+      the equilibrium current must vanish.
 \end{enumerate}
 
 Section~\ref{sec:structure} describes the program and its interface.
@@ -410,6 +434,21 @@ in a static figure.
 % =============================================================== 3 Model
 \section{Physical models}
 \label{sec:model}
+
+\subsection{Notation and conventions}
+
+Throughout, energies are in electron volts and the electrostatic potential
+$\psi$ is in volts; the two are numerically equal for a single electron
+charge, so a band edge bends as $E_c(x)=C(x)-\psi(x)$ with no separate
+charge factor. The applied bias $V$ is the potential of the left/top contact,
+the right/bottom contact being grounded, and the carrier quasi-Fermi levels
+$F_n$, $F_p$ are energies in eV pinned to $-V$ and $0$ at the left contact
+and to $0$ at the right. A positive $V$ therefore raises $F_n-F_p$ and is
+forward bias for a diode with its $p$ region on the left. The current
+densities $J_n$, $J_p$ are in A/cm$^2$ and are taken positive when the
+corresponding carrier flows from left to right; the terminal current $J$
+reported below is $J_n+J_p$. Doping is signed---positive for acceptors,
+negative for donors---so $N_{\rm net}=N_D^{+}-N_A^{-}$.
 
 \subsection{Electrostatics and carrier statistics}
 
@@ -592,9 +631,24 @@ incomplete gamma function,
   Q\!\left(\tfrac32, \frac{\max(0,E_{\rm cut}-E_c(x))}{kT}\right),
   \label{eq:cont}
 \end{equation}
-which removes from the classical density exactly the part that the bound
-states already account for and tends to unity far from the well. Without this
-term the density outside the well would vanish.
+which reduces to the three-dimensional result far from the well and decays
+inside it. The weight has a precise meaning in one limit, which is worth
+stating because the generalisation is an approximation. In the Boltzmann
+limit, counting only the three-dimensional states whose perpendicular kinetic
+energy clears the threshold gives
+$n_{\rm cont}(x)=n_{\rm 3D}(x)\,Q(3/2,(E_{\rm cut}-E_c)/kT)$, exactly: the
+regularised incomplete gamma is the closed form of that integral, and the
+subband sum plus this remainder then counts every electron once, so the
+classical density is recovered far from the well and the bound states are not
+double counted inside it. Under Fermi--Dirac statistics Eq.~\eqref{eq:cont}
+is applied as a multiplicative weight on the *degenerate* density, which is
+an approximation---the 2D subbands carry the physics of confinement and the
+weight only has to be right in the crossover. The formula also assumes a
+single threshold $E_{\rm cut}$ set by the lower contact edge, which is
+exact for a symmetric device but an idealisation for asymmetric contacts or
+multiple wells; those are not studied here. Without some such term the
+density outside the well would vanish, so the approximation is kept and its
+status recorded.
 
 % ============================================================ 4 Numerics
 \section{Discretisation and solvers}
@@ -610,9 +664,12 @@ adjacent nodes,
   {\varepsilon_i+\varepsilon_{i+1}} .
   \label{eq:harmonic}
 \end{equation}
-This is the exact face value for a piecewise-constant $\varepsilon$ whose jump
-lies between the two nodes, and it is what makes the discrete operator
-faithful to the un-expanded form of Eq.~\eqref{eq:poisson}. Writing the
+For a piecewise-constant $\varepsilon$ whose jump lies between the two nodes,
+the harmonic mean is the equivalent permittivity of two half-cells in series
+and hence the coefficient that makes the discrete flux exact for that
+assumption; node material parameters are assigned to the faces this way, and
+it is what makes the discrete operator faithful to the un-expanded form of
+Eq.~\eqref{eq:poisson}. Writing the
 equation as $\varepsilon\psi''+\varepsilon'\psi'=-q\rho$ and then dropping the
 second term, which is a common simplification, leaves a spurious field at every
 heterointerface with a permittivity contrast; the harmonic mean retains it
@@ -628,7 +685,7 @@ iteration, seeded from the Boltzmann expression and refined against the full
 statistics, so that degeneracy, satellite valleys and non-parabolicity are
 already accounted for before the global solve starts.
 
-\subsection{A Scharfetter--Gummel flux that is exact for any statistics}
+\subsection{A cancellation-free Scharfetter--Gummel flux via a generalised potential}
 \label{sec:sg}
 
 Exponential fitting requires the density to be exponential in a potential, and
@@ -672,20 +729,51 @@ collapses analytically:
   \label{eq:sgcleanp}
 \end{align}
 The factor that vanishes at equilibrium is now computed from the quasi-Fermi
-level itself, so $J=0$ exactly at $w=0$, in floating point, with no cancellation involved. This is the form the program uses. The identity between
-Eq.~\eqref{eq:sg} and Eqs.~\eqref{eq:sgclean}--\eqref{eq:sgcleanp} is
-algebraic and holds for any $n_{i+1}/n_i$, which is what makes it safe for
-degenerate and non-parabolic carriers.
+level itself, so $J=0$ at $w=0$ in floating point, with no cancellation
+involved. This is the form the program uses.
+
+Two statements must be kept apart, because only one of them is claimed here.
+The identity between Eq.~\eqref{eq:sg} and
+Eqs.~\eqref{eq:sgclean}--\eqref{eq:sgcleanp} is *algebraic*: substituting
+Eq.~\eqref{eq:psi} into Eq.~\eqref{eq:sg} collapses the bracket exactly, for
+any $n_{i+1}/n_i$, because the two terms are the same expression written in
+different variables. That rearrangement neither introduces nor removes an
+approximation, so it is safe for degenerate and non-parabolic carriers in the
+same sense that Eq.~\eqref{eq:sg} itself is. What the rearrangement is *not*
+is a proof that Eqs.~\eqref{eq:sgclean}--\eqref{eq:sgcleanp} are a consistent
+discretisation of the continuous drift--diffusion equation under arbitrary
+statistics: the exponential-fitting argument behind the Scharfetter--Gummel
+flux assumes a Boltzmann density--potential relation, and the generalised
+potential of Eq.~\eqref{eq:psi} is the device by which the same flux is
+applied to other statistics. The truncation error of that application is not
+established here and is a legitimate subject for a dedicated consistency
+study; what we rely on is the residual, which is driven to the round-off
+floor (Section~\ref{sec:continuity}).
+
+The same caveat applies to the equilibrium statement. The flux is zero by
+construction *when the stored quasi-Fermi levels satisfy $w=0$ exactly*; how
+closely a converged solve approaches that condition is a property of the
+solver's residual and of floating point, not of the formula. The verification
+suite checks that a converged equilibrium solution returns zero current to
+the reported tolerance (Section~\ref{sec:verification}), which is the honest
+form of the claim.
 
 \subsection{Continuity, damping and row equilibration}
+\label{sec:continuity}
 
 Each continuity equation is solved by Newton's method for one quasi-Fermi
 level with the other frozen. The Jacobian is tridiagonal and is assembled
-analytically, differentiating Eq.~\eqref{eq:sgclean} with $B(-u)$ lagged---exact
-for Boltzmann statistics and a good approximation otherwise, with the
-converged solution checked by residual rather than by the linearisation.
+analytically, differentiating Eq.~\eqref{eq:sgclean} with $B(-u)$ lagged. The
+lag is exact for Boltzmann statistics and an approximation otherwise: the
+converged solution is therefore judged by the residual rather than by the
+linearisation, and the residual tolerance is set below the quantity the
+current is compared against (see below). We do not quantify the effect of
+the lag on the convergence rate beyond the observation that a bias point
+converges in two or three Gummel sweeps from a cold start
+(Section~\ref{sec:gummel}); a rigorous convergence analysis of the
+lagged-Jacobian linearisation is outside the scope of this work.
 
-Semiconductor Jacobians span absurd dynamic ranges: in the continuity
+Semiconductor Jacobians span an extreme dynamic range: in the continuity
 equations a neutral-region row is of order $\mu kT n/h\sim10^{27}$ while a
 Dirichlet row is of order one, so the matrix is numerically singular although
 it is well conditioned after equilibration. Since Newton's step is invariant
@@ -700,6 +788,7 @@ in physical units, at $10^{-16}$ of the equilibrated scale, which keeps the
 current imbalance four decades below the current itself.
 
 \subsection{The Gummel loops}
+\label{sec:gummel}
 
 Poisson, the two continuity equations and (optionally) the eigenvalue problem
 are coupled by Gummel iteration~\cite{Gummel1964}. For transport, one sweep is:
@@ -801,10 +890,54 @@ It reports
   \texttt{J\_spread} = \frac{\max_k|J_k-J|}{|J|},
   \label{eq:spread}
 \end{equation}
-the relative deviation of the worst link. This is not a cosmetic diagnostic.
-At \SI{0.8}{V} forward bias it is $1.9\times10^{-4}$, at \SI{-1}{V} it is $373$:
-the reverse current of this device is not resolvable beyond its leading digits
-at $N=1000$, and the program says so instead of printing six figures.
+the relative deviation of the worst link. Two clarifications are in order,
+because both were misread in review. First, \texttt{J\_spread} is a
+*diagnostic*, not an error bar: it tells the user when the reported value is
+dominated by round-off, but it is not a bound on the true current, and no
+such bound is claimed. Second, the median rule is a device for reading a
+nearly constant quantity off a noisy vector, and it is insensitive to the
+threshold: the reported current changes by less than one part in $10^{10}$
+when the $10^{3}n_i$ cutoff is moved to $10^{2}n_i$ or $10^{4}n_i$
+(Table~\ref{tab:current}). At \SI{0.8}{V} forward bias \texttt{J\_spread} is
+$1.9\times10^{-4}$, at \SI{-1}{V} it is $373$: the reverse current of this
+device is not resolvable beyond its leading digits at $N=1000$, and the
+program says so instead of printing six figures.
+
+An independent check, using quantities the median rule does not touch,
+confirms that reading. Integrating the discrete continuity equation over the
+device, the terminal current must satisfy
+$J_{\rm left}-J_{\rm right}=q\int R\,dx$. Table~\ref{tab:current} reports
+this balance: at \SI{0.8}{V} the two sides agree to $2.6\%$ of the current,
+but the imbalance grows to $50\%$ at \SI{0.6}{V}, $126\%$ at \SI{0.4}{V} and
+roughly $200\%$ in reverse bias. Where the conservation residual is a large
+fraction of the current, no choice of reading point can recover a meaningful
+number, and the paper restricts its quantitative I--V claims to the bias
+range where the balance holds; below that the characteristic is qualitative.
+
+\begin{table}[t]
+\centering
+\caption{Current reporting for the GaAs $p$--$n$ junction at $N=1000$:
+the median of $J_n+J_p$ over links with $\max(n,p)\le k\,n_i$, and the
+continuity-balance check $J_{\rm left}-J_{\rm right}$ against
+$q\int R\,dx$. The median is insensitive to the threshold $k$; at $+0.4$~V and
+above no link satisfies the criterion (the depletion region has filled), so
+the median falls back to the whole device. The balance is the independent
+evidence that the low-bias current is below the arithmetic noise floor.}
+\label{tab:current}
+{\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+$V$ (V) & $J$ (A/cm$^2$) & spread & $k=10^3$ median & balance (rel.) \\
+\midrule
+$+0.8$ & $3.32\times10^{-4}$ & $1.9\times10^{-4}$ & $3.32\times10^{-4}$ & $0.026$ \\
+$+0.6$ & $2.83\times10^{-7}$ & $1.2\times10^{-2}$ & $2.83\times10^{-7}$ & $0.50$ \\
+$+0.4$ & $2.57\times10^{-9}$ & $0.42$ & $2.57\times10^{-9}$ & $1.26$ \\
+$-0.5$ & $-5.29\times10^{-12}$ & $335$ & $-5.29\times10^{-12}$ & $2.00$ \\
+$-1.0$ & $-9.50\times10^{-12}$ & $373$ & $-9.50\times10^{-12}$ & $2.00$ \\
+\bottomrule
+\end{tabular}}
+\end{table}
 
 % ========================================================= 5 Verification
 \section{Verification}
@@ -812,37 +945,50 @@ at $N=1000$, and the program says so instead of printing six figures.
 
 \subsection{Strategy}
 
-The program is held to closed-form results, not to itself. Three suites and an
-end-to-end API test carry \num{196} assertions (Table~\ref{tab:suites});
-Figure~\ref{fig:verification} plots the achieved relative error of each check
-against the tolerance it is held to. Every tolerance is stated in the test
-source, and every reference value is either an analytic expression or a
-literature number with its provenance in a comment.
+The program is held to closed-form results, not to itself. Three suites and
+an end-to-end API test carry the checks of Table~\ref{tab:suites}. The checks
+are reported by kind rather than as a single undifferentiated count, because
+the kinds prove different things: an analytic-limit check pins a physical
+model against a closed form, a discrete-operator check pins a property of the
+discretisation itself, and a physical-scale check catches a result in the
+wrong decade without a closed form to compare against. The API test checks
+the payload contract between the service and the front end, which is not a
+physics assertion at all. Every tolerance is stated in the test source, and
+every reference value is either an analytic expression or a literature number
+with its provenance in a comment. The counts below are the number of
+assertions the current revision of the suite executes; they change as tests
+are added, so the source is the authority, not this table.
 
 \begin{table}[t]
 \centering
-\caption{Verification suites. Wall times are for one core of the machine
-described in Section~\ref{sec:performance}.}
+\caption{Verification suites and what their checks prove. ``Analytic'' are
+closed-form or asymptotic limits; ``operator'' are properties of the discrete
+operator (orthonormality, exact conservation, identities); ``scale'' are
+physical-order-of-magnitude checks without a closed form; ``contract'' are
+web-API payload checks, which are not physics assertions. The check count is
+what the current revision executes; it grows as tests are added, so the test
+source is the authority. Wall times are for one core of the machine described
+in Section~\ref{sec:performance}.}
 \label{tab:suites}
 {\small
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}lrrp{5.6cm}@{}}
+\begin{tabular}{@{}lrlp{4.4cm}@{}}
 \toprule
-Suite & Checks & Time & Scope \\
+Suite & Checks & Kinds & Scope \\
 \midrule
-\texttt{validate\_physics.py} & 13 & \SI{206}{s} &
+\texttt{validate\_physics.py} & 14 & analytic, operator &
   depletion approximation, short-base diode law, ideality factor,
   $1/\tau$ scaling, zero current \\
-\texttt{validate\_quantum.py} & 31 & \SI{21}{s} &
+\texttt{validate\_quantum.py} & 32 & analytic, operator, scale &
   square, triangular and mass-step wells, 2D population limits,
   self-consistent loop \\
-\texttt{validate\_strain.py} & 71 & \SI{0.9}{s} &
+\texttt{validate\_strain.py} & 72 & analytic, operator &
   strain tensor, Bir--Pikus identities, pressure coefficient,
   critical thickness \\
-\texttt{web\_smoke.py} & 81 & \SI{37}{s} &
+\texttt{web\_smoke.py} & 82 & contract &
   API contract, every preset, every payload field \\
 \midrule
-Total & 196 & \SI{265}{s} & \\
+Total & 200 & & \\
 \bottomrule
 \end{tabular}}
 \end{table}
@@ -874,7 +1020,9 @@ $4.7\%$ and $4.0\%$ at \SI{0.80}{V}, \SI{0.85}{V} and \SI{0.90}{V}; the local
 ideality factor is $1.01$ in the diffusion regime and $1.92$ in the
 SRH-dominated regime, the textbook two-region crossover; the reverse current
 scales as $1/\tau$ with the ratio $9.99997$ for a decade change in lifetime;
-and the equilibrium current is exactly zero. Current conservation at
+and the equilibrium current is zero to the reported tolerance (the
+cancellation-free form makes it zero by construction at $w=0$, and the solve
+returns it to round-off). Current conservation at
 \SI{0.8}{V} holds to $1.9\times10^{-4}$, which is the \texttt{J\_spread} of
 that operating point. The reverse generation current at \SI{-0.5}{V} is
 $5.3\times10^{-12}$~A/cm$^2$ against $8.7\times10^{-12}$~A/cm$^2$ from the
@@ -943,13 +1091,13 @@ double counted or dropped density, this test would fail immediately.
 substrate to the layer material gives zero strain, zero valence shift and an
 unchanged band offset.
 
-\emph{The equilibrium current must vanish identically.} It does, by
-construction of Eq.~\eqref{eq:sgclean}, and the assertion is kept because the
+\emph{The equilibrium current must vanish.} It does, by construction of
+Eq.~\eqref{eq:sgclean} at $w=0$, and the assertion is kept because the
 construction is easy to break.
 
 \subsection{The API contract}
 
-The 81 assertions of \texttt{web\_smoke.py} post every preset through the
+The 82 checks of \texttt{web\_smoke.py} post every preset through the
 service and check the payload the front end actually draws: that each field the
 browser reads is present and finite, that the arrays share one index set, that
 the subband populations sum to the reported sheet density, that one
@@ -1035,14 +1183,18 @@ conduction edge rises by \SI{101.9}{meV}, both of which move the confinement.
 \subsection{Cost}
 
 Figure~\ref{fig:cost} reports wall times on one core of an Intel Core
-i7-12700, Windows 11, Python 3.13.5, NumPy 2.5.4, SciPy 1.18.1. The nonlinear
-Poisson solve at $N=1000$ takes \SI{0.35}{s} and scales between linear and
-quadratic in $N$; a drift--diffusion bias point takes \SI{1.5}{s} in two
+i7-12700, Windows 11, Python 3.13.5, NumPy 2.5.4, SciPy 1.18.1. Each timing
+is the \emph{median} of several repeats, with the min--max spread recorded in
+\texttt{bench.json} alongside it, so the numbers are a typical runtime rather
+than a best case; the cheap solves repeat five times, the expensive ones
+three. The nonlinear
+Poisson solve at $N=1000$ takes \SI{0.34}{s} (spread \SI{0.34}{s}--
+\SI{0.37}{s}) and scales between linear and
+quadratic in $N$; a drift--diffusion bias point takes \SI{1.47}{s} in two
 Gummel sweeps; a full I--V point, cold-started and including the harder reverse
-and high-forward biases, averages \SI{6.8}{s}; and a quantum equilibrium solve
-for the heterojunction takes \SI{31.8}{s} on the run recorded in the figure,
-with repeated runs of the same script spread between \SI{18}{s} and
-\SI{32}{s}. These are single-core numbers on a problem of a few thousand
+and high-forward biases, averages \SI{3.8}{s}; and a quantum equilibrium solve
+for the heterojunction takes \SI{22.7}{s} (spread \SI{22.5}{s}--
+\SI{24.7}{s}). These are single-core numbers on a problem of a few thousand
 unknowns; nothing here needs a cluster, and an I--V sweep parallelises
 trivially because the bias points are independent.
 
@@ -1094,13 +1246,24 @@ regions.}
 The second is the mesh sensitivity of the quantised sheet density. For the
 heterojunction of Section~\ref{sec:results} the sheet density is
 $7.28\times10^{11}$~cm$^{-2}$ at $N=400$, $6.49\times10^{11}$~cm$^{-2}$ at
-$N=800$ and $6.46\times10^{11}$~cm$^{-2}$ at $N=1600$: $12\%$ between the two
-coarsest meshes and $0.5\%$ between the two finest. The default $N=1000$ is
-therefore adequate for the sheet density to a few per mille, but a calculation
-that quotes three digits at $N=400$ does not. The ground-state energy behaves
-the same way: \SI{-16.8}{meV}, \SI{-12.1}{meV}, \SI{-11.9}{meV} at the same
-three meshes, because a coarser grid widens the effective well by roughly one
-cell.
+$N=800$, $6.46\times10^{11}$~cm$^{-2}$ at $N=1600$ and
+$6.60\times10^{11}$~cm$^{-2}$ at $N=3200$: about $12\%$ between the two
+coarsest meshes, but the sequence is then *not* monotonic---the finest mesh
+sits $2.2\%$ above the $N=1600$ value. A Richardson extrapolation of the
+three finest meshes returns $6.72\times10^{11}$~cm$^{-2}$ with an observed
+order of only $\sim0.5$, far from the second-order one would expect of the
+discretisation, which signals that the error is not dominated by a smooth
+$h$-power. The likely source is the well geometry: as the grid changes, the
+interface node and the well width move by a fraction of a cell, and the
+bound-state energy and its population respond to that discrete movement
+rather than to the cell size. The ground-state energy behaves the same way:
+\SI{-16.8}{meV}, \SI{-12.1}{meV}, \SI{-11.9}{meV}, \SI{-12.8}{meV} at the
+four meshes. The default $N=1000$ is adequate for the sheet density to a few
+per cent; the manuscript's earlier three-significant-digit quotes at $N=800$
+are accordingly retired, and the values in Section~\ref{sec:results} should
+be read to two significant digits. The audit script
+\texttt{quantum\_convergence.py} writes the full table, and
+\texttt{paper/cpc/data/qconv.json} carries it.
 
 \subsection{What the model does not contain}
 
@@ -1118,20 +1281,59 @@ used for the $\Gamma$, $L$ and $X$ valleys and the shear deformation potential
 $\Xi_u$ is omitted; effective masses do not change with strain; and there is no
 Auger recombination.
 
-One disagreement with experiment is worth recording. For strained In$_x$Ga$_{1-x}$As wells our conduction-band offset at
-$x=0.10$ is \SI{41}{meV}, against \SI{82}{meV} from the capacitance--voltage
-determination of Zubkov \emph{et al.}~\cite{Zubkov2004}, which fits
-$\Delta E_C=0.85x-0.3x^2$~eV. The discrepancy is a factor of two and is
-systematic in $x$. Part of it is expected---a C--V offset is extracted with an
-assumed effective mass and an assumed well width, and the two are correlated
-with the offset---but a factor of two is too large to attribute to that alone,
-and the most likely cause is the valence-band offset the model starts from,
-which sets how much of the strain-induced gap change goes to the conduction
-band. We report the comparison. The override interface of
-Section~\ref{sec:structure} exists for this kind of calibration: a reader who
-prefers a different valence-band offset can supply it per layer and watch what
-it does to the offset, the subband energies and the sheet density, without
-touching the parameter tables.
+One disagreement with experiment is worth recording, because it propagates
+into the device numbers above. For strained In$_x$Ga$_{1-x}$As wells our
+conduction-band offset at $x=0.10$ is \SI{41}{meV}, against \SI{82}{meV} from
+the capacitance--voltage determination of Zubkov \emph{et
+al.}~\cite{Zubkov2004}, which fits $\Delta E_C=0.85x-0.3x^2$~eV---a factor of
+two, systematic in $x$. Part of it is expected, because a C--V offset is
+extracted with an assumed effective mass and an assumed well width that
+correlate with the offset, but a factor of two is too large to attribute to
+that alone. To see which parameter carries it, we perturb each strained-band
+input the model consumes and record the resulting offset, gap, subband energy
+and sheet density (Table~\ref{tab:strain_sens}, produced by
+\texttt{strain\_sensitivity.py}). The valence-band offset is the dominant
+lever: a shift of $-40$~meV moves the $x=0.10$ offset from \SI{41}{meV} to
+\SI{81}{meV}, i.e.\ onto the Zubkov value, and changes the sheet density of
+the Section~\ref{sec:results} well by up to a factor of four. The hydrostatic
+deformation potential $a_c$ is the second lever, moving the offset by
+$\pm20$~meV under a $\pm20\%$ rescaling and the sheet density by a factor
+$\sim2.4$. The shear potential $b$ and the hydrostatic valence potential
+$a_v$ leave the conduction-band offset unchanged, as they must, and affect
+only the gap and the valence splitting. The conclusion is therefore a
+bounded one: *for the tabulated parameter set*, the offset is \SI{41}{meV},
+and the disagreement with C--V is within the range a plausible recalibration
+of the valence-band offset explains, but the subband energies and sheet
+densities of any strained-well calculation inherit that parameter
+uncertainty. We report the comparison, and the override interface of
+Section~\ref{sec:structure} exists so that a reader who prefers a different
+valence-band offset can supply it per layer and watch what it does to the
+offset, the subband energies and the sheet density, without touching the
+parameter tables.
+
+\begin{table}[t]
+\centering
+\caption{Strain-parameter sensitivity of the In$_{0.2}$Ga$_{0.8}$As/GaAs
+well (Ga fraction $0.80$): conduction-band offset $dE_c$ (well relative to
+the GaAs barrier), gap, sheet density and ground level, as each parameter is
+shifted. A negative $dE_c$ means the well edge lies below the barrier.}
+\label{tab:strain_sens}
+{\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Parameter & change & $dE_c$ (meV) & $n_s$ (cm$^{-2}$) & $E_0$ (meV) \\
+\midrule
+baseline & --- & $-85$ & $5.6\times10^{11}$ & $-11.5$ \\
+VBO & $-20$~meV & $-105$ & $8.5\times10^{11}$ & $-29.9$ \\
+VBO & $-40$~meV & $-125$ & $1.19\times10^{12}$ & $-48.7$ \\
+VBO & $-80$~meV & $-165$ & $2.21\times10^{12}$ & $-86.0$ \\
+$a_c$ & $\times0.8$ & $-106$ & $8.5\times10^{11}$ & $-30.3$ \\
+$a_c$ & $\times1.2$ & $-65$ & $3.5\times10^{11}$ & $+6.0$ \\
+$a_v$, $b$ & $\times0.8$--$1.2$ & $-85$ (unchanged) & $5.6\times10^{11}$ & $-11.5$ \\
+\bottomrule
+\end{tabular}}
+\end{table}
 
 % ========================================================== 8 Conclusions
 \section{Conclusions}
@@ -1145,11 +1347,13 @@ approximation; the additions are drift--diffusion transport, self-consistent
 quantisation and strain, and the numerical work that makes them correct in a
 material system whose carrier densities span more than twenty decades.
 
-The parts we would point a reader to are the ones where the obvious
-implementation is wrong in a way that looks right. A Scharfetter--Gummel flux
+The parts we would point a reader to are the ones where the straightforward
+implementation goes wrong in a way that looks right. A Scharfetter--Gummel flux
 written in generalised potentials and rearranged to be cancellation-free gives
-an exactly zero equilibrium current, where the textbook form gives
-$10^{10}$~A/cm$^2$ of numerical noise. Row equilibration of the continuity
+a zero equilibrium current, where the textbook form gives
+$10^{10}$~A/cm$^2$ of numerical noise; the rearrangement is an algebraic
+identity, and we have been careful to say so rather than claim a new
+discretisation. Row equilibration of the continuity
 Jacobian, with the residual tolerance expressed in physical rather than
 equilibrated units, is the difference between a converged minority profile and
 a flat one. A ghost-node flux, a nodal-sum normalisation and a harmonic
@@ -1158,8 +1362,10 @@ right. And in III--V materials the terminal current of a quasi-neutral region
 is below the round-off of the stored levels, so the current has to be read
 where it is clean and its spread reported.
 
-All of this is held to \num{196} assertions against closed-form results,
-including the negative controls that make a quantisation scheme believable. The
+All of this is held to a verification suite whose checks are reported by
+kind---analytic and asymptotic limits, discrete-operator properties, and
+physical-scale regression, plus a separate web-API contract test---including
+the negative controls that make a quantisation scheme believable. The
 program runs a representative bias point in about a second, is served by a
 browser front end for classroom use, and is released under the same licence as
 the work it derives from.
