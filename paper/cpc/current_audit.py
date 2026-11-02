@@ -12,12 +12,20 @@ the two things the referee asked about:
      choice of threshold is immaterial; if it is not, the low-bias number is
      not a well-defined prediction.
 
-  2. *Current conservation.*  For each bias it reports
-        - the left- and right-contact currents ``Jn + Jp``,
-        - the device-integrated recombination ``q * int R dx``,
-        - the link-current distribution (median, mean, max, std) of ``Jn+Jp``,
-     and checks ``J_left - J_right ~ q * int R dx``, which is the discrete
-     continuity sum that a conserved current must satisfy.
+  2. *Current conservation.*  For each bias it reports the left- and
+     right-contact currents, the device-integrated recombination as a
+     discrete sum ``q * h * sum_i R[i]`` over the interior nodes, and the
+     link-current distribution.  It then checks the three finite-volume
+     telescoping identities that a conserved current must satisfy exactly:
+
+        electrons:  Jn[-1] - Jn[0] = + q h sum_i R[i]
+        holes:      Jp[-1] - Jp[0] = - q h sum_i R[i]
+        total:      Jtot[-1] - Jtot[0] = 0
+
+     The first two are exact consequences of the solved continuity equation;
+     the third (total current) is what the floating-point noise in the
+     quasi-neutral regions degrades, and its relative imbalance is the honest
+     measure of how trustworthy the reported terminal current is.
 
 Run:  python paper/cpc/current_audit.py
 Writes paper/cpc/data/current_audit.json and prints the same table.
@@ -77,14 +85,36 @@ def audit(V, N=1000):
     Jmean = float(np.mean(Jtot))
     Jstd = float(np.std(Jtot))
 
-    # conservation: J_left - J_right should equal q * int R dx
-    J_left = float(s.Jn[0] + s.Jp[0])
-    J_right = float(s.Jn[-1] + s.Jp[-1])
+    # Discrete continuity conservation.  The finite-volume continuity
+    # equations (transport.py) are applied at the *interior* nodes 1..N-2,
+    # the two boundary nodes being Dirichlet contacts:
+    #     electrons:  Jn[i] - Jn[i-1] = + q R[i] h
+    #     holes:      Jp[i] - Jp[i-1] = - q R[i] h
+    # Summing over i = 1..N-2 telescopes the interior fluxes away exactly:
+    #     Jn[-1] - Jn[0] = + q h sum_i R[i]      (electrons)
+    #     Jp[-1] - Jp[0] = - q h sum_i R[i]      (holes)
+    #     Jtot[-1] - Jtot[0] = 0                 (total current, exact)
+    # A plain discrete sum is the *only* consistent quadrature here: the
+    # identity is exact for the nodal sum, whereas a trapezoid rule injects
+    # its own O(h^2) truncation error and, worse, drags in R[0] and R[-1],
+    # which sit at Dirichlet nodes and are not part of any continuity
+    # equation.  The total current telescopes to zero on its own, so it must
+    # NOT be compared against q*int R -- that is the single-carrier relation.
+    Jn = s.Jn
+    Jp = s.Jp
     R = s.R
     dx = m.x[1] - m.x[0]
-    gen = float(Q * np.trapezoid(R, dx=dx))     # net recombination, A/cm^2
-    imbalance = J_left - J_right - gen
-    scale = max(abs(J_left), abs(J_right), abs(gen), 1e-300)
+    q_int_R = Q * float(np.sum(R[1:-1])) * dx       # A/cm^2, interior nodes only
+
+    Jn_left, Jn_right = float(Jn[0]), float(Jn[-1])
+    Jp_left, Jp_right = float(Jp[0]), float(Jp[-1])
+    J_left = Jn_left + Jp_left
+    J_right = Jn_right + Jp_right
+
+    elec_imbalance = (Jn_right - Jn_left) - q_int_R        # electrons
+    hole_imbalance = (Jp_right - Jp_left) + q_int_R        # holes
+    total_imbalance = J_right - J_left                     # total current
+    scale = max(abs(J_left), abs(J_right), abs(q_int_R), 1e-300)
 
     return {
         "V": V,
@@ -99,8 +129,15 @@ def audit(V, N=1000):
         },
         "conservation": {
             "J_left": J_left, "J_right": J_right,
-            "q_int_R": gen, "imbalance": imbalance,
-            "imbalance_relative": float(imbalance / scale),
+            "Jn_left": Jn_left, "Jn_right": Jn_right,
+            "Jp_left": Jp_left, "Jp_right": Jp_right,
+            "q_int_R": q_int_R,
+            "electron_imbalance": elec_imbalance,
+            "hole_imbalance": hole_imbalance,
+            "total_imbalance": total_imbalance,
+            "electron_imbalance_relative": float(elec_imbalance / scale),
+            "hole_imbalance_relative": float(hole_imbalance / scale),
+            "total_imbalance_relative": float(total_imbalance / scale),
         },
     }
 
@@ -114,15 +151,18 @@ def main():
         json.dump(out, f, indent=2)
 
     # human-readable table
-    hdr = f"{'V':>6} {'J(rep)':>12} {'spread':>9} {'J_L':>12} {'J_R':>12} " \
-          f"{'q∫R':>12} {'imbal':>12} {'imbal/scale':>12}"
+    hdr = f"{'V':>6} {'J(rep)':>12} {'spread':>9} {'q∫R(Σ)':>12} " \
+          f"{'e-imbal':>11} {'h-imbal':>11} {'tot-imbal':>11}"
     print(hdr)
     for r in out:
         c = r["conservation"]
         print(f"{r['V']:>6} {r['J_reported']:>12.4e} {r['J_spread']:>9.3g} "
-              f"{c['J_left']:>12.4e} {c['J_right']:>12.4e} "
-              f"{c['q_int_R']:>12.4e} {c['imbalance']:>12.4e} "
-              f"{c['imbalance_relative']:>12.3g}")
+              f"{c['q_int_R']:>12.4e} "
+              f"{c['electron_imbalance_relative']:>11.3g} "
+              f"{c['hole_imbalance_relative']:>11.3g} "
+              f"{c['total_imbalance_relative']:>11.3g}")
+    print("  (e-/h-imbal: relative deviation of the electron / hole telescoping\n"
+          "   sum from q*sum R*h; tot-imbal: total-current conservation)")
     print(f"\nwrote {path}")
 
 
