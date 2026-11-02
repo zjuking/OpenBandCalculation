@@ -19,7 +19,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 PYTHON = sys.executable
 
-SCRIPTS = ["validate_physics.py", "validate_quantum.py", "validate_strain.py"]
+SCRIPTS = ["validate_physics.py", "validate_quantum.py", "validate_strain.py",
+           "validate_continuum.py"]
 
 
 @pytest.mark.physics
