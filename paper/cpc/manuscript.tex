@@ -80,7 +80,7 @@ reported by kind---analytic and asymptotic limits, discrete-operator
 properties, and physical-scale regression---rather than as a single
 undifferentiated count, with a separate end-to-end test for the web API
 contract (Section~\ref{sec:verification}). A representative bias point
-converges in two Gummel sweeps and about \SI{1.5}{s}.
+converges in two Gummel sweeps and about \SI{0.1}{s}.
 
 % ---------------------------------------------------------------------------
 %  PROGRAM SUMMARY -- mandatory for CPiP articles.
@@ -337,10 +337,10 @@ Module & Responsibility & Lines \\
 \texttt{newton.py}    & damped Newton, scalar Newton, row equilibration    & 223 \\
 \texttt{materials/}   & binary and ternary parameter tables, alloys        & 504 \\
 \texttt{layer.py}     & layer, graded layer, compound layer, contacts      & 161 \\
-\texttt{fermi.py}     & generalised Fermi--Dirac integrals                 & 146 \\
+\texttt{fermi.py}     & generalised Fermi--Dirac integrals, lookup table    & 278 \\
 \midrule
 \texttt{web/}         & FastAPI service and browser front end              & 1744 \\
-\texttt{tests/}       & verification suites                                & 929 \\
+\texttt{tests/}       & verification suites                                & 1104 \\
 \bottomrule
 \end{tabular}}
 \end{table}
@@ -483,13 +483,17 @@ quadrature after the substitution $t=u^2$, which removes the $\sqrt{t}$
 endpoint singularity in the derivative of the integrand; with 128 nodes and an
 upper limit $u_{\max}=\sqrt{\max(\phi,0)+60}$ the values and their derivatives
 with respect to $\phi$ come out of one pass over the nodes, which is what the
-Newton Jacobian needs. The piecewise minimax rational approximations of
-Fukushima~\cite{Fukushima2015} are more accurate still, but they carry a large
-coefficient table for a gain that is invisible at the tolerance of a Newton
-iteration. Against adaptive quadrature the median relative difference of the
-quadrature is $1\times10^{-13}$ over $-5\le\phi\le15$; the single outlier,
-$8\times10^{-10}$ at $\phi=-5$, is limited by the absolute tolerance of the
-reference integral, whose value there is only $5\times10^{-3}$.
+Newton Jacobian needs. This quadrature is the accuracy reference; inside the
+solvers it is replaced by a precomputed $(\phi,\alpha)$ lookup table that
+shortens the self-consistent loop by an order of magnitude without changing a
+result (Section~\ref{sec:performance}). The piecewise minimax rational
+approximations of Fukushima~\cite{Fukushima2015} are more accurate still, but
+they carry a large coefficient table for a gain that is invisible at the
+tolerance of a Newton iteration. Against adaptive quadrature the median
+relative difference of the quadrature is $1\times10^{-13}$ over
+$-5\le\phi\le15$; the single outlier, $8\times10^{-10}$ at $\phi=-5$, is
+limited by the absolute tolerance of the reference integral, whose value there
+is only $5\times10^{-3}$.
 
 The band parameters are those of the Vurgaftman
 compilation~\cite{Vurgaftman2001}, the dielectric constants those of
@@ -985,10 +989,12 @@ Suite & Checks & Kinds & Scope \\
 \texttt{validate\_strain.py} & 72 & analytic, operator &
   strain tensor, Bir--Pikus identities, pressure coefficient,
   critical thickness \\
+\texttt{validate\_fermi.py} & 10 & operator &
+  tabulated integral vs quadrature: nodes, interpolation error, fallback \\
 \texttt{web\_smoke.py} & 82 & contract &
   API contract, every preset, every payload field \\
 \midrule
-Total & 200 & & \\
+Total & 210 & & \\
 \bottomrule
 \end{tabular}}
 \end{table}
@@ -998,9 +1004,10 @@ Total & 200 & & \\
 \includegraphics[width=\columnwidth]{figures/fig_verification.pdf}
 \caption{Achieved relative error of each closed-form check against the
 tolerance it is held to, for the three physics suites. Every point lies below
-the diagonal; the cluster on the bottom axis is exact to round-off. The 81 API
-assertions of \texttt{web\_smoke.py} check payload consistency rather than
-physics and are not shown.}
+the diagonal; the cluster on the bottom axis is exact to round-off. The 82 API
+checks of \texttt{web\_smoke.py} check payload consistency rather than
+physics and are not shown, and \texttt{validate\_fermi.py} pins the lookup
+table against the quadrature rather than a closed form.}
 \label{fig:verification}
 \end{figure}
 
@@ -1187,27 +1194,37 @@ i7-12700, Windows 11, Python 3.13.5, NumPy 2.5.4, SciPy 1.18.1. Each timing
 is the \emph{median} of several repeats, with the min--max spread recorded in
 \texttt{bench.json} alongside it, so the numbers are a typical runtime rather
 than a best case; the cheap solves repeat five times, the expensive ones
-three. The nonlinear
-Poisson solve at $N=1000$ takes \SI{0.34}{s} (spread \SI{0.34}{s}--
-\SI{0.37}{s}) and scales between linear and
-quadratic in $N$; a drift--diffusion bias point takes \SI{1.47}{s} in two
+three, and the first run of a process (which builds the integral table below)
+is excluded. The nonlinear
+Poisson solve at $N=1000$ takes \SI{0.035}{s} and scales between linear and
+quadratic in $N$; a drift--diffusion bias point takes \SI{0.13}{s} in two
 Gummel sweeps; a full I--V point, cold-started and including the harder reverse
-and high-forward biases, averages \SI{3.8}{s}; and a quantum equilibrium solve
-for the heterojunction takes \SI{22.7}{s} (spread \SI{22.5}{s}--
-\SI{24.7}{s}). These are single-core numbers on a problem of a few thousand
-unknowns; nothing here needs a cluster, and an I--V sweep parallelises
-trivially because the bias points are independent.
+and high-forward biases, averages \SI{0.95}{s}; and a quantum equilibrium solve
+for the heterojunction takes \SI{1.5}{s}. These are single-core numbers on a
+problem of a few thousand unknowns; nothing here needs a cluster, and an I--V
+sweep parallelises trivially because the bias points are independent.
 
-Almost all of the quantum cost sits in one kernel. A profile of the $N=800$
-case puts $82\%$ of the runtime in the Fermi--Dirac quadrature: 7956
+Most of the quantum cost used to sit in one kernel. A profile of the $N=800$
+case put $82\%$ of the runtime in the Fermi--Dirac quadrature: 7956
 evaluations of four integrals over 128 nodes, for 58 Poisson solves. The node
 count is deliberate---64 nodes would halve the time but is only good to
 $6\times10^{-6}$ relative, and a quadrature error propagates straight into the
-current. Batching the three valleys into one call and tabulating $H_{1/2}$ in
-$\phi$ are the obvious levers and are left for a later version. The timings,
-the machine and the library versions are written by \texttt{benchmark.py} into
-the JSON that generated Fig.~\ref{fig:cost}, so each number is traceable to a
-specific run.
+current. Rather than reduce the order, the program now tabulates the integral:
+$H_{1/2}(\phi,\alpha)$ and its derivative are precomputed on a
+$(\phi,\alpha)$ grid ($\phi\in[-80,40]$, $\alpha\in[0,0.32]$, which covers
+every catalogue alloy at \SI{300}{K}) and recovered by cubic Hermite
+interpolation in $\phi$ with linear interpolation in $\alpha$, the tabulated
+derivative supplying the Hermite slopes so value and derivative are both exact
+at the nodes. The worst-case relative error of the lookup is a few
+$10^{-4}$---three orders below the mesh error the quantised results carry---and
+points outside the table fall back to the exact quadrature, so the table is a
+pure optimisation that never changes a result. This shortens the quantum
+equilibrium solve by a factor of about 15 and the drift--diffusion bias point
+by an order of magnitude, at no accuracy cost. The table, the quadrature and
+the boundary fallback are pinned against one another by
+\texttt{validate\_fermi.py}. The timings, the machine and the library versions
+are written by \texttt{benchmark.py} into the JSON that generated
+Fig.~\ref{fig:cost}, so each number is traceable to a specific run.
 
 \begin{figure*}[t]
 \centering
@@ -1366,7 +1383,8 @@ All of this is held to a verification suite whose checks are reported by
 kind---analytic and asymptotic limits, discrete-operator properties, and
 physical-scale regression, plus a separate web-API contract test---including
 the negative controls that make a quantisation scheme believable. The
-program runs a representative bias point in about a second, is served by a
+program runs a representative bias point in about a tenth of a second and a
+quantum equilibrium solve in about a second and a half, is served by a
 browser front end for classroom use, and is released under the same licence as
 the work it derives from.
 

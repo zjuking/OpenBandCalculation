@@ -20,8 +20,8 @@ the numbers in it.
 | `current_audit.py` | Link-current distribution, median-rule threshold sensitivity, and the `J_left - J_right` vs `q*int(R)` conservation check (Table 5) |
 | `quantum_convergence.py` | Sheet density / E0 vs N=400..3200 with Richardson extrapolation (Section 7.2) |
 | `strain_sensitivity.py` | VBO / a_c / a_v / b_shear perturbations propagated to dEc, gap, sheet density, E0 (Table 7) |
-| `data/*.out` | Raw output of the four verification suites, used by Fig. 2 |
-| `data/bench.json` | Timing data behind Fig. 5 and the numbers in Section 7 |
+| `data/*.out` | Raw output of the five verification suites, used by Fig. 2 |
+| `data/bench.json` | Timing data behind Fig. 5 and the numbers in Section 7 (median of repeats) |
 | `data/current_audit.json` | Data behind the current-conservation table |
 | `data/qconv.json` | Sheet density vs mesh (N=400..3200), quoted in Section 7.2 |
 | `data/strain_sensitivity.json` | Data behind the strain-sensitivity table |
@@ -37,6 +37,7 @@ python -m venv .venv
 python tests/validate_physics.py > paper/cpc/data/validate_physics.out
 python tests/validate_quantum.py > paper/cpc/data/validate_quantum.out
 python tests/validate_strain.py  > paper/cpc/data/validate_strain.out
+python tests/validate_fermi.py  > paper/cpc/data/validate_fermi.out
 python -m uvicorn web.app:app --port 8123 &           # needs PYTHONPATH=src
 python tests/web_smoke.py http://127.0.0.1:8123 > paper/cpc/data/web_smoke.out
 

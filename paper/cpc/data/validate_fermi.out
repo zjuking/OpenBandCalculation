@@ -1,0 +1,23 @@
+
+=== Table nodes are exact =====================================
+  [PASS] node values match to round-off               got  1.383e-12  want  0  (rel 1.38e-12, tol 1e-10)
+  [PASS] node derivatives match to round-off          got  9.977e-13  want  0  (rel 9.98e-13, tol 1e-10)
+
+=== Interpolation error inside the table ======================
+  [PASS] max |dH/H| relative error (value)            got  0.0002493  want  0  (rel 2.49e-04, tol 5e-04)
+  [PASS] max |ddH/dH| relative error (derivative)     got  0.0003807  want  0  (rel 3.81e-04, tol 2e-03)
+    median value error 5.23e-06, median derivative error 5.34e-06
+
+=== Fallback outside the table is exact =======================
+  [PASS] phi beyond table matches quadrature          got  0  want  0  (rel 0.00e+00, tol 1e-12)
+  [PASS] alpha beyond table matches quadrature        got  0  want  0  (rel 0.00e+00, tol 1e-12)
+
+=== H(phi, 0) = F_{1/2}(phi) ==================================
+  [PASS] H(phi,0) == F_{1/2}(phi)                     got  0  want  0  (rel 0.00e+00, tol 1e-12)
+  [PASS] dH(phi,0) == F'_{1/2}(phi)                   got  0  want  0  (rel 0.00e+00, tol 1e-12)
+
+=== Scalar and 0-d inputs =====================================
+  [PASS] scalar returns the right value               got  0.6781  want  0.6781  (rel 1.26e-11, tol 1e-09)
+  [PASS] 0-d arrays return the right value            got  1.396  want  1.396  (rel 1.05e-11, tol 1e-09)
+
+ALL FERMI-TABLE CHECKS PASSED
