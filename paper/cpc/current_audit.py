@@ -53,10 +53,15 @@ def audit(V, N=1000):
     n = s.n
     p = s.p
     ni = m.ni
-    both = np.maximum(n, p)[:-1]         # carrier density at each link's left node
+    # A link sits between nodes k and k+1; a link is "in the depletion region"
+    # when the larger of the two endpoint densities is below k * ni.  Take the
+    # max over both endpoints so the mask matches the manuscript's wording.
+    both = np.maximum(np.maximum(n[:-1], n[1:]),
+                      np.maximum(p[:-1], p[1:]))
+    ni_link = np.maximum(ni[:-1], ni[1:])
 
     def median_over(k):
-        mask = both <= k * ni
+        mask = both <= k * ni_link
         if not mask.any():
             return float("nan"), 0
         return float(np.median(Jtot[mask])), int(mask.sum())
