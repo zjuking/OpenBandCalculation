@@ -40,6 +40,13 @@ elastic constants but no deformation potentials (they are wurtzite in
 practice, so the zinc-blende values are not trustworthy); strain is skipped
 for them.
 
+The elastic constants and deformation potentials are single *room-temperature*
+values: no temperature dependence is tabulated (the ternaries inherit a linear
+composition interpolation).  Over the 0-400 K range they drift by only a few
+per cent, which is smaller than the spread between the Van de Walle and
+Vurgaftman compilations themselves, so the omission is a second-order error
+for the room-temperature devices this package targets.
+
 Mobility
 --------
 ``mu_n`` / ``mu_p`` are room-temperature low-field drift mobilities in

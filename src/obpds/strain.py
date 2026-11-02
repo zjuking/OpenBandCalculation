@@ -53,7 +53,13 @@ Deliberately not modelled
 -------------------------
 * Valley-specific hydrostatic potentials: L and X are shifted by the same
   ``a_c`` as Gamma, and the shear splitting of the four L and three X valleys
-  (which needs the ``Xi_u`` deformation potentials) is ignored.
+  (which needs the ``Xi_u`` deformation potentials) is ignored.  This is a
+  good approximation for the *direct-gap* arsenides/antimonides (GaAs, InAs,
+  InGaAs, ...), where Gamma is the conduction minimum and L/X sit well above
+  it, so a shared ``a_c`` only shifts satellites that do not matter for the
+  electrostatics.  It is *not* adequate for the indirect phosphides (GaP,
+  AlP, AlAs) or for any structure whose conduction minimum is at X or L, where
+  the valley-specific ``a_c`` and ``Xi_u`` decide the band alignment.
 * Strain dependence of the effective masses.  The heavy-hole mass really is
   anisotropic under [001] strain; the tabulated [100] masses are used.
   What *is* captured is that a split-off band stops contributing to the

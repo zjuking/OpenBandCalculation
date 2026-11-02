@@ -190,6 +190,22 @@ for mm in (0.005, 0.01, 0.02, 0.04):
                     float(h < prev), 1.0, 1e-9)
     prev = h
 
+# Multi-system cross-check against reported MB critical thicknesses.  The
+# MB force-balance value is a *lower bound* -- measured critical thicknesses
+# are routinely 2-4x larger because it says nothing about how fast
+# dislocations actually nucleate -- so these are order-of-magnitude checks,
+# not pointwise ones.  Reference values: Photonica (buried-well MB estimate,
+# ~14 nm at the 1.43% of In0.2Ga0.8As and ~22 nm at 1% mismatch) and an NLR
+# report (~0.5 um at the 0.07% mismatch of 1% In).
+for ga, want_nm in ((0.86, 22.0), (0.99, 500.0)):
+    p = get_alloy("GaInAs", ga).props(300.0)
+    fm = (p["lattice_constant"] - a_gaas) / a_gaas
+    hc_i = critical_thickness(fm, a_gaas, p["C11"], p["C12"]) / 10.0
+    print(f"    In{1 - ga:.2f}Ga{ga:.2f}As on GaAs (f={fm * 100:.2f}%): "
+          f"h_c = {hc_i:.1f} nm  (lit ~{want_nm:g} nm)")
+    all_ok &= check(f"In{1 - ga:.2f}Ga{ga:.2f}As/GaAs h_c ~ literature",
+                    hc_i, want_nm, 0.6, " nm")
+
 # --------------------------------------------------------------- device level
 section("Device level: strained vs unstrained")
 
