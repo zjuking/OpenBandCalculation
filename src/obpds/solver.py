@@ -59,7 +59,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.sparse import diags
 
-from .fermi import KB_EV, generalized_fermi
+from .fermi import KB_EV, generalized_fermi, generalized_fermi_fast
 from .materials import apply_overrides
 from .newton import newton, scalar_newton, row_scale
 from .strain import strain_bands
@@ -216,7 +216,7 @@ def carriers(m, psi, Fp, Fn, approx="kane"):
         p = m.Nv * np.exp(np.clip(phi_p, -700.0, 700.0))
         dp = -p / kT
     else:
-        F, dF = generalized_fermi(phi_p, 0.0)
+        F, dF = generalized_fermi_fast(phi_p, 0.0)
         p = C_F * m.Nv * F
         dp = -C_F * m.Nv * dF / kT
 
@@ -231,9 +231,9 @@ def carriers(m, psi, Fp, Fn, approx="kane"):
         nx = m.Nc_X * np.exp(np.clip(phi_x, -700.0, 700.0))
         dn = (ng + nl + nx) / kT
     else:
-        Hg, dHg = generalized_fermi(phi_g, alpha)
-        Hl, dHl = generalized_fermi(phi_l, 0.0)
-        Hx, dHx = generalized_fermi(phi_x, 0.0)
+        Hg, dHg = generalized_fermi_fast(phi_g, alpha)
+        Hl, dHl = generalized_fermi_fast(phi_l, 0.0)
+        Hx, dHx = generalized_fermi_fast(phi_x, 0.0)
         ng = C_F * m.Nc_Gamma * Hg
         nl = C_F * m.Nc_L * Hl
         nx = C_F * m.Nc_X * Hx
@@ -343,7 +343,7 @@ def carriers_scalar(m, i, psi, F, approx):
         p = m.Nv[i] * np.exp(np.clip(phi_p, -700.0, 700.0))
         dp = -p / kT
     else:
-        Fv, dFv = generalized_fermi(np.array(phi_p), 0.0)
+        Fv, dFv = generalized_fermi_fast(np.array(phi_p), 0.0)
         p = float(C_F * m.Nv[i] * Fv)
         dp = float(-C_F * m.Nv[i] * dFv / kT)
 
@@ -357,9 +357,9 @@ def carriers_scalar(m, i, psi, F, approx):
                          + m.Nc_X[i] * np.exp(np.clip(phis[2], -700, 700))))
         dn = n / kT
     else:
-        Hg, dHg = generalized_fermi(phis[0], alpha)
-        Hl, dHl = generalized_fermi(phis[1], 0.0)
-        Hx, dHx = generalized_fermi(phis[2], 0.0)
+        Hg, dHg = generalized_fermi_fast(phis[0], alpha)
+        Hl, dHl = generalized_fermi_fast(phis[1], 0.0)
+        Hx, dHx = generalized_fermi_fast(phis[2], 0.0)
         n = float(C_F * (m.Nc_Gamma[i] * Hg + m.Nc_L[i] * Hl + m.Nc_X[i] * Hx))
         dn = float(C_F * (m.Nc_Gamma[i] * dHg + m.Nc_L[i] * dHl
                           + m.Nc_X[i] * dHx) / kT)
