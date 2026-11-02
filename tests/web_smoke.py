@@ -178,8 +178,8 @@ if j["status"] == "done":
 
 # Pseudomorphic strain: the substrate is a separate field from the stack, so
 # it needs its own contract check on both endpoints.
-print("\n=== 应变 InGaAs/GaAs 量子阱 (2DEG): pseudomorphic strain")
-dev = dict(presets["应变 InGaAs/GaAs 量子阱 (2DEG)"])
+print("\n=== Strained InGaAs/GaAs quantum well (2DEG): pseudomorphic strain")
+dev = dict(presets["Strained InGaAs/GaAs quantum well (2DEG)"])
 check("preset carries a substrate", dev.get("substrate") == "GaAs",
       f"substrate={dev.get('substrate')}")
 rows = post("/api/describe", dev).get("rows") or []

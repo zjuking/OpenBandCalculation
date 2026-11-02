@@ -443,7 +443,7 @@ def presets():
         # are quantised into a subband holding ~6e11 cm^-2.  Both ticks are
         # set because strain and quantisation are the two halves of what a
         # real quantum well does.
-        "应变 InGaAs/GaAs 量子阱 (2DEG)": DeviceSpec(
+        "Strained InGaAs/GaAs quantum well (2DEG)": DeviceSpec(
             layers=[L(20, "GaAs", -1e17), L(8, "GaInAs", 0.0, 0.8),
                     L(20, "GaAs", -1e17)],
             contacts=[ContactSpec(), ContactSpec()],

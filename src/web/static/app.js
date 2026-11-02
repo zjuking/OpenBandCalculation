@@ -86,7 +86,7 @@ function drawChart(host, cfg) {
   if (!vis.length || !cfg.x || !cfg.x.length) {
     svg.appendChild(el("text", { x: W / 2, y: H / 2, fill: "#8b98b0",
       "text-anchor": "middle", "font-size": 12 }))
-      .textContent = "无数据 — 先在左侧求解";
+      .textContent = "No data — solve on the left first";
     return;
   }
 
@@ -349,7 +349,7 @@ function renderLayers() {
     box.className = "layer";
     box.innerHTML = `
       <div class="head">
-        <span class="idx">第 ${i + 1} 层</span>
+        <span class="idx">Layer ${i + 1}</span>
         <span>
           <button class="btn tiny" data-act="up">↑</button>
           <button class="btn tiny" data-act="down">↓</button>
@@ -357,19 +357,19 @@ function renderLayers() {
         </span>
       </div>
       <div class="fields">
-        <label class="span2">材料
+        <label class="span2">Material
           <select data-f="material"></select>
         </label>
         ${ternary ? `
-        <label>x 起点 <input type="number" step="0.01" min="0" max="1"
+        <label>x start <input type="number" step="0.01" min="0" max="1"
                value="${L.composition ?? 0.3}" data-f="composition"></label>
-        <label>x 终点 <input type="number" step="0.01" min="0" max="1"
+        <label>x end <input type="number" step="0.01" min="0" max="1"
                value="${L.composition_end ?? (L.composition ?? 0.3)}"
                data-f="composition_end"></label>` : ""}
-        <label>厚度 (nm)
+        <label>Thickness (nm)
           <input type="number" step="5" min="0.5"
                  value="${L.thickness_nm}" data-f="thickness_nm"></label>
-        <label>掺杂
+        <label>Doping
           <div class="doping">
             <select data-f="type">
               <option value="p"${type === "p" ? " selected" : ""}>p</option>
@@ -434,7 +434,7 @@ async function refreshInfo(box, L) {
   try {
     const p = await api(`/api/properties?material=${encodeURIComponent(L.material)}` +
       `&composition=${L.composition ?? ""}&T=${+$("T").value || 300}`);
-    info.textContent = `Eg ${fmt(p.Eg, 4)} eV · ${p.direct ? "直接" : "间接"}带隙` +
+    info.textContent = `Eg ${fmt(p.Eg, 4)} eV · ${p.direct ? "direct" : "indirect"} gap` +
       ` · a ${fmt(p.lattice_constant, 5)} Å · εr ${fmt(p.dielectric, 3)}` +
       ` · μn ${fmt(p.mu_n, 3)} / μp ${fmt(p.mu_p, 3)} cm²/Vs`;
   } catch { info.textContent = `Eg ${fmt(meta.Eg, 4)} eV`; }
@@ -442,7 +442,7 @@ async function refreshInfo(box, L) {
 
 /* ──────────────────────────── job polling ──────────────────────────────── */
 
-function busy(on, text = "计算中…", frac = null) {
+function busy(on, text = "Computing…", frac = null) {
   const b = $("busy");
   b.classList.toggle("show", on);
   $("busyText").textContent = text;
@@ -457,7 +457,7 @@ async function runJob(kind, payload, label) {
     await new Promise(r => setTimeout(r, 250));
     const j = await api(`/api/job/${job_id}`);
     if (j.status === "error") {
-      busy(false); setStatus("求解失败", "err");
+      busy(false); setStatus("Solve failed", "err");
       throw new Error(j.error || "unknown solver error");
     }
     busy(true, `${label}  ${j.progress}/${j.total}`,
@@ -479,7 +479,7 @@ async function doSolve(mode) {
   const V = +$("V").value || 0;
   const q = quantumWanted();
   if (q && mode !== "equilibrium") {
-    setStatus("量子修正仅在「平衡能带」模式下可用，本次按经典求解", "warn");
+    setStatus("Quantum correction is only available in equilibrium band mode; solving classically this time", "warn");
   }
   try {
     const res = await runJob("solve",
@@ -487,18 +487,18 @@ async function doSolve(mode) {
                                    downsample: 800,
                                    quantum: q && mode === "equilibrium",
                                    n_states: +$("nStates").value || 8 } },
-      mode === "equilibrium" ? (q ? "平衡能带（量子修正）" : "平衡能带") :
-      mode === "zero_current" ? `零电流 V=${V} V` : `漂移-扩散 V=${V} V`);
+      mode === "equilibrium" ? (q ? "Equilibrium bands (quantum)" : "Equilibrium bands") :
+      mode === "zero_current" ? `Zero current V=${V} V` : `Drift-diffusion V=${V} V`);
     state.solution = res;
     state.solution.mode = mode;
     drawSolution();
     const ok = res.converged !== false;
-    const tag = res.n_is_quantum ? " · 量子" : "";
-    setStatus(ok ? `完成 · ${mode}${tag} · V=${V} V`
-                 : `未收敛 · ${mode} · V=${V} V`,
+    const tag = res.n_is_quantum ? " · quantum" : "";
+    setStatus(ok ? `Done · ${mode}${tag} · V=${V} V`
+                 : `Not converged · ${mode} · V=${V} V`,
               ok ? "ok" : "warn");
   } catch (e) {
-    setStatus("错误: " + e.message, "err");
+    setStatus("Error: " + e.message, "err");
   }
 }
 
@@ -512,13 +512,13 @@ async function doSweep(kind) {
   };
   try {
     const res = await runJob("sweep", { url: "/api/sweep", body },
-      kind === "iv" ? "I–V 扫描" : "C–V 扫描");
+      kind === "iv" ? "I–V sweep" : "C–V sweep");
     state.sweep = { kind, ...res };
     if (kind === "iv") { drawIV(); switchTab("iv"); }
     else { drawCV(); switchTab("cv"); }
-    setStatus(`${kind.toUpperCase()} 扫描完成`, "ok");
+    setStatus(`${kind.toUpperCase()} sweep complete`, "ok");
   } catch (e) {
-    setStatus("错误: " + e.message, "err");
+    setStatus("Error: " + e.message, "err");
   }
 }
 
@@ -546,8 +546,8 @@ function bandSeries(s) {
     { name: "Ec (X)", data: s.Ec_X, color: "#f472b6", width: 1.2, dash: "2 3" },
   ];
   if (hh_lh) {
-    out.push({ name: "Ev (重空穴)", data: s.Ev_HH, color: "#ff6b6b", width: 2 });
-    out.push({ name: "Ev (轻空穴)", data: s.Ev_LH, color: "#ff9f7a",
+    out.push({ name: "Ev (heavy hole)", data: s.Ev_HH, color: "#ff6b6b", width: 2 });
+    out.push({ name: "Ev (light hole)", data: s.Ev_LH, color: "#ff9f7a",
                width: 1.6, dash: "6 3" });
   } else {
     out.push({ name: "Ev", data: s.Ev, color: "#ff6b6b", width: 2 });
@@ -570,7 +570,7 @@ function quantSeries(s) {
     sub.levels_eV.forEach((E, i) => {
       if (!sub.bound || !sub.bound[i]) return;
       out.push({
-        name: `E${i} 子带`, data: new Array(n).fill(E),
+        name: `E${i} subband`, data: new Array(n).fill(E),
         color: "#ffd166", width: 1.6, dash: "6 3",
       });
     });
@@ -586,7 +586,7 @@ function drawSolution() {
 
   state.charts.band = {
     x: s.x_nm, series: bandSeries(s), bands,
-    xlabel: "深度 (nm)", ylabel: "能量 (eV)", legend: "legendBand",
+    xlabel: "Depth (nm)", ylabel: "Energy (eV)", legend: "legendBand",
   };
   drawChart($("chartBand"), state.charts.band);
 
@@ -595,11 +595,11 @@ function drawSolution() {
     series: [
       { name: "n", data: s.n, color: "#4da3ff", width: 2 },
       { name: "p", data: s.p, color: "#ff6b6b", width: 2 },
-      { name: "n (L 谷)", data: s.n_L, color: "#a78bfa", width: 1.1, dash: "4 3" },
-      { name: "n (X 谷)", data: s.n_X, color: "#f472b6", width: 1.1, dash: "2 3" },
+      { name: "n (L valley)", data: s.n_L, color: "#a78bfa", width: 1.1, dash: "4 3" },
+      { name: "n (X valley)", data: s.n_X, color: "#f472b6", width: 1.1, dash: "2 3" },
       { name: "|E|", data: (s.field || []).map(Math.abs),
         color: "#37d67a", width: 1.4, axis: "y2" },
-    ], bands, xlabel: "深度 (nm)", ylabel: "浓度 (cm⁻³)",
+    ], bands, xlabel: "Depth (nm)", ylabel: "Concentration (cm⁻³)",
     y2label: "|E| (V/cm)", legend: "legendCarrier",
   };
   drawChart($("chartCarrier"), state.charts.carrier);
@@ -610,36 +610,36 @@ function drawSolution() {
   $("readBand").innerHTML =
     `<b>${s.mode || ""}</b> · V = ${fmt(s.V, 3)} V · T = ${s.meta.T} K · ` +
     `kT = ${fmt(s.meta.kT, 4)} eV · N = ${s.meta.N} · ${s.meta.approx} · ` +
-    `网格步长 ${fmt((s.total_nm || 0) / s.meta.N, 3)} nm · ` +
-    `最小带隙 ${fmt(dE, 4)} eV · |E|max ${fmt(Emax, 4)} V/cm` +
-    (s.converged === false ? ` · <span style="color:#ff6b6b">未收敛</span>` : "");
+    `Mesh step ${fmt((s.total_nm || 0) / s.meta.N, 3)} nm · ` +
+    `min gap ${fmt(dE, 4)} eV · |E|max ${fmt(Emax, 4)} V/cm` +
+    (s.converged === false ? ` · <span style="color:#ff6b6b">not converged</span>` : "");
 
   const split = valenceSplit(s);
   if (split > 2e-3) {
     const heavy = s.Ev_HH[0] >= s.Ev_LH[0];
     $("readBand").innerHTML +=
-      ` · <b style="color:#ff9f7a">赝晶应变</b>：HH–LH 分裂 ` +
-      `<b>${fmt(split * 1000, 1)}</b> meV（${heavy ? "重空穴" : "轻空穴"}在上）`;
+      ` · <b style="color:#ff9f7a">pseudomorphic strain</b>: HH–LH split ` +
+      `<b>${fmt(split * 1000, 1)}</b> meV (${heavy ? "heavy hole" : "light hole"} on top)`;
   }
 
   const sub = s.subbands;
   if (sub && sub.levels_eV) {
     const lv = sub.levels_eV.filter((_, i) => !sub.bound || sub.bound[i]);
     $("readBand").innerHTML += lv.length
-      ? ` · <b style="color:#ffd166">量子修正</b>：${lv.length} 个束缚子带 ` +
-        `(${lv.map(e => fmt(e, 4)).join(", ")} eV) · 面密度 ` +
+      ? ` · <b style="color:#ffd166">quantum correction</b>: ${lv.length} bound subbands ` +
+        `(${lv.map(e => fmt(e, 4)).join(", ")} eV) · sheet density ` +
         `<b>${fmt(sub.sheet_density_cm2, 4)}</b> cm⁻²`
-      : ` · <b style="color:#ffd166">量子修正</b>：无束缚态（该结构不限制载流子，` +
-        `密度退化为经典结果）`;
+      : ` · <b style="color:#ffd166">quantum correction</b>: no bound states (this structure ` +
+        `confines no carriers, so the density falls back to the classical result)`;
   }
 
   if (s.J !== undefined) {
     $("readCarrier").innerHTML =
-      `J = <b>${fmt(s.J, 4)}</b> A/cm² · Jn(接触) ${fmt(s.Jn_contact, 3)} · ` +
-      `Jp(接触) ${fmt(s.Jp_contact, 3)} · Gummel 迭代 ${s.gummel_iterations}`;
+      `J = <b>${fmt(s.J, 4)}</b> A/cm² · Jn(contact) ${fmt(s.Jn_contact, 3)} · ` +
+      `Jp(contact) ${fmt(s.Jp_contact, 3)} · Gummel iterations ${s.gummel_iterations}`;
   } else if (s.Jtotal) {
     const j = s.Jtotal[Math.floor(s.Jtotal.length / 2)];
-    $("readCarrier").innerHTML = `J(中点) = <b>${fmt(j, 4)}</b> A/cm²`;
+    $("readCarrier").innerHTML = `J(midpoint) = <b>${fmt(j, 4)}</b> A/cm²`;
   } else {
     $("readCarrier").innerHTML = "";
   }
@@ -659,16 +659,16 @@ function drawIV() {
   state.charts.iv = {
     x: V, ylog: log,
     series: [{ name: log ? "|J|" : "J", data, color: "#37d67a", width: 2 }],
-    xlabel: "偏压 V (V)", ylabel: log ? "|J| (A/cm²)" : "J (A/cm²)",
+    xlabel: "Bias V (V)", ylabel: log ? "|J| (A/cm²)" : "J (A/cm²)",
   };
   drawChart($("chartIV"), state.charts.iv);
 
-  let txt = `点数 ${V.length} · N=${sw.meta ? sw.meta.N : "—"} · ` +
+  let txt = `${V.length} points · N=${sw.meta ? sw.meta.N : "—"} · ` +
     `V ∈ [${fmt(V[0], 3)}, ${fmt(V[V.length - 1], 3)}] V`;
   if (sw.ideality && sw.ideality.length) {
-    txt += " · 理想因子 " + sw.ideality.map(s =>
+    txt += " · ideality factor " + sw.ideality.map(s =>
       `${fmt(s.range[0], 2)}–${fmt(s.range[1], 2)} V: <b>${fmt(s.ideality, 3)}</b>`
-    ).join("， ");
+    ).join(", ");
   }
   $("readIV").innerHTML = txt;
 }
@@ -684,13 +684,13 @@ function drawCV() {
         color: "#4da3ff", width: 2 },
       { name: "C", data: C, color: "#ffb648", width: 1.6, axis: "y2" },
     ],
-    xlabel: "偏压 V (V)", ylabel: "1/C² (cm⁴/F²)", y2label: "C (F/cm²)",
+    xlabel: "Bias V (V)", ylabel: "1/C² (cm⁴/F²)", y2label: "C (F/cm²)",
   };
   drawChart($("chartCV"), state.charts.cv);
   const ok = C.filter(isFinite);
   $("readCV").innerHTML = ok.length
     ? `C ∈ [${fmt(Math.min(...ok), 3)}, ${fmt(Math.max(...ok), 3)}] F/cm²`
-    : "无有限结果";
+    : "no finite results";
 }
 
 const WF_COLORS = ["#ffd166", "#4da3ff", "#37d67a", "#f472b6",
@@ -712,8 +712,8 @@ function drawWF() {
   if (!psi.length || !(s.x_nm || []).length || psi[0].length !== s.x_nm.length) {
     state.charts.wf = null;
     host.innerHTML =
-      `<div class="hint">勾选「量子修正」并重新求解平衡能带，<br>` +
-      `这里会画出各束缚子带的 |ψ|² 分布。</div>`;
+      `<div class="hint">Tick "quantum correction" and re-solve the equilibrium bands;<br>` +
+      `the |ψ|² distribution of each bound subband will be drawn here.</div>`;
     $("legendWF").innerHTML = "";
     $("readWF").innerHTML = "";
     return;
@@ -730,7 +730,7 @@ function drawWF() {
     };
   });
   state.charts.wf = { x: s.x_nm, series, bands,
-                      xlabel: "深度 (nm)", ylabel: "|ψ|²（各自归一化）",
+                      xlabel: "Depth (nm)", ylabel: "|ψ|² (each normalised)",
                       legend: "legendWF" };
   drawChart(host, state.charts.wf);
 
@@ -738,11 +738,11 @@ function drawWF() {
   if (pop.length) {
     const tot = pop.reduce((a, b) => a + b, 0) || 1;
     $("readWF").innerHTML =
-      `连续谱阈值 E<sub>cut</sub> = ${fmt(sub.E_cut_eV, 4)} eV · 总面密度 ` +
+      `continuum threshold E<sub>cut</sub> = ${fmt(sub.E_cut_eV, 4)} eV · total sheet density ` +
       `<b>${fmt(sub.sheet_density_cm2, 4)}</b> cm⁻²<br>` +
       pop.map((p, k) =>
-        `E${idx[k]}：${fmt(sub.levels_eV[idx[k]], 4)} eV · ` +
-        `<b>${fmt(p, 4)}</b> cm⁻²（${fmt(100 * p / tot, 1)} %）`
+        `E${idx[k]}: ${fmt(sub.levels_eV[idx[k]], 4)} eV · ` +
+        `<b>${fmt(p, 4)}</b> cm⁻² (${fmt(100 * p / tot, 1)} %)`
       ).join(" · ");
   }
 }
@@ -751,8 +751,8 @@ async function drawTable() {
   try {
     const { rows } = await api("/api/describe", readDevice());
     const strained = rows.some(r => r.substrate_a !== undefined);
-    const head = ["层", "厚度 (nm)", "Eg (eV)", "ΔEc/ΔEg", "掺杂 (cm⁻³)",
-                  "a (Å)", "失配 %", "εr"]
+    const head = ["Layer", "Thickness (nm)", "Eg (eV)", "ΔEc/ΔEg", "Doping (cm⁻³)",
+                  "a (Å)", "Mismatch %", "εr"]
       .concat(strained ? ["ε∥ %", "ε⊥ %", "h_c (nm)"] : []);
     const cell = (v, d = 4) => `<td>${fmt(v, d)}</td>`;
     const body = rows.map(r => `<tr><td>${r.material}</td>` +
@@ -771,15 +771,17 @@ async function drawTable() {
       `<table><thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead>` +
       `<tbody>${body}</tbody></table>` +
       (strained
-        ? `<p class="note">应变相对衬底 ${rows[0].substrate}` +
-          `（a = ${fmt(rows[0].substrate_a, 4)} Å）计算，生长方向 [001]；` +
-          `⚠ 表示该层厚度已超过 Matthews–Blakeslee 临界厚度，实际很可能部分弛豫。` +
+        ? `<p class="note">Strain computed relative to substrate ${rows[0].substrate}` +
+          ` (a = ${fmt(rows[0].substrate_a, 4)} Å), growth direction [001]; ` +
+          `⚠ marks a layer thicker than the Matthews–Blakeslee critical thickness, ` +
+          `which in practice is likely to be partly relaxed.` +
           (rows.some(r => r.strain_applied === false)
-            ? `<br>⚠ 部分材料缺少形变势数据（如氮化物），应变已计算但未施加能带修正。`
+            ? `<br>⚠ Some materials lack deformation-potential data (the nitrides, for example); ` +
+              `strain is computed but no band shift is applied.`
             : "") +
           `</p>`
         : "");
-  } catch (e) { $("layerTable").textContent = "层参数不可用：" + e.message; }
+  } catch (e) { $("layerTable").textContent = "Layer parameters unavailable: " + e.message; }
 }
 
 /* ────────────────────────────── tabs ───────────────────────────────────── */
@@ -807,7 +809,7 @@ async function init() {
   // the layer editor does not offer here, so they are listed but resolve at
   // the default x = 0.5 unless the user pins a lattice constant instead.
   $("substrate").innerHTML =
-    `<option value="">无（各层取自身晶格常数）</option>` +
+    `<option value="">None (each layer keeps its own lattice constant)</option>` +
     mat.materials.map(m =>
       `<option value="${m.name}">${m.name}` +
       `${m.ternary ? " (x=0.5)" : ""}</option>`).join("");
@@ -820,7 +822,7 @@ async function init() {
     sel.onchange = () => {
       writeDevice(pre.presets[sel.value]);
       state.solution = null; state.sweep = null;
-      setStatus("已载入 " + sel.value);
+      setStatus("Loaded " + sel.value);
       drawTable();
     };
     writeDevice(pre.presets[sel.value]);
@@ -859,7 +861,7 @@ async function init() {
     rt = setTimeout(() => switchTab(document.querySelector(".tab.active").dataset.tab), 120);
   });
 
-  setStatus("就绪", "ok");
+  setStatus("Ready", "ok");
 }
 
-init().catch(e => setStatus("初始化失败: " + e.message, "err"));
+init().catch(e => setStatus("Initialisation failed: " + e.message, "err"));
