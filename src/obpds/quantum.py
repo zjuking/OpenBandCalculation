@@ -198,7 +198,12 @@ def quantum_density(m, psi, Fn, approx="kane", n_states=12):
         m_state = (np.sum(phb * phb * m.meff_e_Gamma[:, None], axis=0)
                    * m.dx)
         pop = subband_population(m_state, E_b, float(np.mean(Fn)), m.T)
-        n_q += phb @ pop
+        # The volume density of a bound subband is N_i * |phi_i|^2, not
+        # N_i * phi_i: the wavefunction itself can change sign across nodes,
+        # and using it (instead of its square) would make the bound density
+        # small (integral ~ sqrt(L_eff) * N instead of N) and even negative
+        # in places, silently erasing the channel.
+        n_q += (phb * phb) @ pop
         pop_bound = pop
         sheet = float(np.sum(pop))
 
