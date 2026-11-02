@@ -37,9 +37,9 @@ python 3.13.5, numpy 2.5.4
 ------------------------------------------------------------------
   converged            True
   bound subbands       1 of 8 levels
-  E_0                  -0.012110 eV
+  E_0                  -0.006601 eV
   E_cut                -0.004633 eV
-  sheet density        6.4887e+11 cm^-2
+  sheet density        5.6332e+11 cm^-2
 
 ------------------------------------------------------------------
 6. Pseudomorphic In0.2Ga0.8As well on GaAs
@@ -56,4 +56,4 @@ python 3.13.5, numpy 2.5.4
   dEc, calibrated      185.4 meV
 
 ------------------------------------------------------------------
-wall time 9.8 s
+wall time 5.3 s
