@@ -582,13 +582,26 @@ def solve_drift_diffusion(m: Model, V: float, approx="kane",
     # with c ~ 1e17, so the gradient belonging to a 1e-15 A/cm^2 current is
     # ~1e-22 eV per cell, five orders below the round-off of a stored level
     # of order 0.1 eV.  Those links report pure noise.  Inside the depletion
-    # region both carriers are minorities, both densities are near ni and both
-    # fluxes are clean, so read the current off there -- the constant is the
-    # same, only the arithmetic is better.  `J_spread` reports how far the
-    # worst link strays, which is the honest measure of how much of the
-    # number is signal.
-    both = np.maximum(n, p)[:-1]
-    mask = both <= 1e3 * float(m.ni.max())
+    # region both carriers are minorities, both densities are near the *local*
+    # intrinsic density ni and both fluxes are clean, so read the current off
+    # there -- the constant is the same, only the arithmetic is better.
+    # `J_spread` reports how far the worst link strays, which is the honest
+    # measure of how much of the number is signal.
+    #
+    # A link is "in the depletion region" when the larger of its two endpoint
+    # densities (n and p, at both ends) is at most 1e3 * the intrinsic density
+    # local to that link.  Two subtleties decide correctness on a
+    # heterostructure:
+    #   * the intrinsic density must be the *local* one, not ni.max() over the
+    #     whole device: a narrow-gap layer pushes ni.max() orders of magnitude
+    #     above the wide-gap ni, and a global threshold would then admit
+    #     quasi-neutral wide-gap links as "depleted" and bias the median;
+    #   * both endpoints must satisfy the condition: the left-node density
+    #     alone is blind to a doped interface sitting on the right node.
+    both = np.maximum(np.maximum(n[:-1], n[1:]),
+                      np.maximum(p[:-1], p[1:]))
+    ni_link = np.maximum(m.ni[:-1], m.ni[1:])
+    mask = both <= 1e3 * ni_link
     J = float(np.median(Jtot[mask])) if mask.any() else float(np.median(Jtot))
     spread = float(np.abs(Jtot - J).max() / max(abs(J), 1e-300))
 
