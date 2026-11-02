@@ -136,6 +136,11 @@ class TransportSolution:
         base["Jp_contact"] = self.Jp_contact
         base["converged"] = self.converged
         base["gummel_iterations"] = self.gummel_iterations
+        # Conservation diagnostics, reported independently of `converged`.
+        for k in ("continuity_balance_electron", "continuity_balance_hole",
+                  "continuity_balance_total", "net_charge"):
+            if hasattr(self, k):
+                base[k] = float(getattr(self, k))
         return base
 
 
@@ -614,6 +619,31 @@ def solve_drift_diffusion(m: Model, V: float, approx="kane",
     # (2e-4) clean.
     J_reliable = spread <= 1.0
 
+    # ---- conservation diagnostics, reported independently of `converged` ----
+    # Gummel convergence says only that the outer iteration satisfied its own
+    # stopping criterion; it does not by itself guarantee current or charge
+    # conservation.  Both are checked here and shipped with the solution so a
+    # caller can tell "converged" apart from "correct".
+    #
+    # Current conservation: the three finite-volume telescoping identities
+    # (electrons and holes each balance against q*sum R*h over the interior
+    # nodes; the total current must telescope to zero exactly).  See
+    # current_audit.py for the derivation.
+    dx = m.dx
+    q_int_R = Q * float(np.sum(R[1:-1])) * dx
+    Jn_left, Jn_right = float(Jn[0]), float(Jn[-1])
+    Jp_left, Jp_right = float(Jp[0]), float(Jp[-1])
+    continuity_balance_electron = (Jn_right - Jn_left) - q_int_R
+    continuity_balance_hole = (Jp_right - Jp_left) + q_int_R
+    continuity_balance_total = (Jn_right + Jp_right) - (Jn_left + Jp_left)
+
+    # Charge conservation: the net integrated space charge.  The device as a
+    # whole stays neutral under ohmic contacts, so this is ~0; any residual is
+    # the charge the discrete Poisson solve failed to cancel (a residual), not
+    # a physical accumulation.
+    rho = Q * (p - n + m.Nnet)
+    net_charge = float(np.sum(rho[1:-1])) * dx       # C/cm^2
+
     sol = evaluate(m, psi, Fp, Fn, V, approx)
     return TransportSolution(
         solution=sol, psi=psi, Fn=Fn, Fp=Fp, n=n, p=p,
@@ -621,6 +651,10 @@ def solve_drift_diffusion(m: Model, V: float, approx="kane",
         J=J, J_spread=spread, J_reliable=J_reliable,
         Jn_contact=float(Jn[0]), Jp_contact=float(Jp[0]),
         R_srh=r_srh, R_rad=r_rad, R=R,
+        continuity_balance_electron=continuity_balance_electron,
+        continuity_balance_hole=continuity_balance_hole,
+        continuity_balance_total=continuity_balance_total,
+        net_charge=net_charge,
         converged=converged, gummel_iterations=iters,
         V=V, T=m.T,
     )
