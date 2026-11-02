@@ -1,3 +1,6 @@
+"""Development scratch: assemble the continuity Jacobian and check its entries
+against finite differences.  Not part of the test suite; see tests/dev/README.
+"""
 from __future__ import annotations
 import os, sys
 import numpy as np

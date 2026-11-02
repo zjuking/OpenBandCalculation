@@ -1,3 +1,6 @@
+# Runtime and web-workbench dependencies (the flat form, for deployments that
+# install from this file instead of `pip install -e ".[web]"`).  Test-only
+# dependencies (pytest, httpx) live in pyproject.toml under [project.optional-dependencies].dev.
 numpy>=1.24
 scipy>=1.10
 fastapi>=0.110

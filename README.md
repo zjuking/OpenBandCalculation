@@ -55,7 +55,7 @@ change those directly in `src/obpds/materials/data.py`. A misspelled key raises
 
 | Module | Contents |
 | --- | --- |
-| `fermi.py` | Fermi–Dirac integral `F_{1/2}` and the Kane generalised integral `H_{1/2} = G_{1/2} + 2αG_1`, Gauss–Legendre quadrature with the `t = u²` substitution to remove the endpoint singularity |
+| `fermi.py` | Fermi–Dirac integral `F_{1/2}` and the Kane generalised integral `H_{1/2} = G_{1/2} + 2αG_1`, Gauss–Legendre quadrature with the `t = u²` substitution, plus a tabulated/interpolated fast path (`generalized_fermi_fast`) with exact-quadrature fallback |
 | `materials/` | Vurgaftman et al. (2001) parameters for 12 binary and 18 ternary III-V alloys, Adachi dielectric constants, Varshni `Eg(T)`, Γ/L/X valleys |
 | `solver.py` | Finite-volume Poisson solve; the interface dielectric constant is the **harmonic mean** |
 | `transport.py` | Drift-diffusion with Scharfetter–Gummel discretisation, Gummel iteration, SRH and radiative recombination |
@@ -97,7 +97,14 @@ change those directly in `src/obpds/materials/data.py`. A misspelled key raises
 7. **Terminal current is taken from the depletion region.** The quasi-neutral
    region carries current as `q μ c dF/dx`; at `c ~ 1e17`, the gradient
    corresponding to 1e-15 A/cm² is five orders of magnitude below the round-off
-   of the stored level, so those cells are pure noise.
+   of the stored level, so those cells are pure noise. The depletion-region
+   links are selected with a *local* `ni` threshold over *both* endpoints (a
+   global `ni.max()` mis-classifies links on gap-contrast heterostructures), and
+   every `TransportSolution` carries the diagnostics that let a caller judge the
+   result: `J_spread` (worst-link deviation), `J_reliable` (whether the current
+   is above the noise floor), the three finite-volume conservation balances
+   (`continuity_balance_electron/_hole/_total`) and the net integrated charge
+   (`net_charge`).
 
 ## Quantum correction (self-consistent Schrödinger–Poisson)
 
@@ -131,7 +138,10 @@ Implementation notes:
 - **Continuum**: states above `E_cut` are still treated as three-dimensional,
   with weight `Q(3/2, (E_cut−Ec)/kT)` (regularised incomplete gamma). This is
   the closed form of the Boltzmann limit, which guarantees a smooth transition
-  back to the classical result outside the well.
+  back to the classical result outside the well. Under degenerate
+  (Fermi–Dirac) statistics the weight is an approximation: `validate_continuum.py`
+  quantifies it — exact to <1e-5 in the Boltzmann limit, worst ~4% of the total
+  sheet density on a real AlGaAs/GaAs HEMT.
 - **Gummel iteration**: the inner Newton solve holds the quantum density fixed
   while the outer loop refreshes the subbands. Undamped, each step contracts by
   about ×0.78 — it is already a contraction mapping — so the step length is
@@ -198,12 +208,29 @@ bands do not move, and the layer table flags this.
 
 ## Validation
 
+One command runs the whole suite, split into three marked classes:
+
 ```bash
-python tests/validate_physics.py     # against analytical results (classical)
-python tests/validate_quantum.py     # against analytical results (quantum)
-python tests/validate_strain.py      # against analytical results (strain)
+python -m pytest                 # everything
+python -m pytest -m unit         # fast pure-function checks (Fermi table)
+python -m pytest -m physics      # solver validation against closed forms (slow)
+python -m pytest -m api          # web-API contract tests (in-process TestClient)
+```
+
+The underlying verification scripts can also be run directly (their stdout is
+the reproducible `paper/cpc/data/*.out` artefact):
+
+```bash
+python tests/validate_physics.py     # classical: against analytical results
+python tests/validate_quantum.py     # quantum:  against analytical results
+python tests/validate_strain.py      # strain:   against analytical results
+python tests/validate_fermi.py       # tabulated Fermi integral vs quadrature
+python tests/validate_continuum.py   # continuum-compensation approximation
 python tests/web_smoke.py            # web API end to end (start the server first)
 ```
+
+`tests/dev/` holds the throwaway diagnostic scripts written while debugging the
+solver; they are not part of the suite (see `tests/dev/README.md`).
 
 Analytical results checked by `validate_physics.py`: built-in potential,
 depletion width and peak field (depletion approximation), ΔEc/ΔEg = 0.62 for

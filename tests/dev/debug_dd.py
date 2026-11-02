@@ -1,3 +1,7 @@
+"""Development scratch: step through one drift-diffusion solve and inspect
+the internal quantities (link currents, effective potentials, recombination)
+at each Gummel iteration.  Not part of the test suite; see tests/dev/README.
+"""
 from __future__ import annotations
 import os, sys, time
 import numpy as np

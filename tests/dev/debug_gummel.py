@@ -1,3 +1,7 @@
+"""Development scratch: drive the Gummel loop manually and print the electron
+and hole continuity solves at each sweep.  Not part of the test suite; see
+tests/dev/README.
+"""
 from __future__ import annotations
 import os, sys
 import numpy as np
