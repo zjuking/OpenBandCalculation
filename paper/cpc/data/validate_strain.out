@@ -1,0 +1,98 @@
+
+=== Biaxial strain state on a (001) substrate =================
+  [PASS] GaAs substrate lattice constant              got  5.65325 A  want  5.65325 A  (rel 0.00e+00, tol 1e-05)
+    a_layer = 5.7343 A, mismatch f = +1.433 %
+  [PASS] in-plane strain is compressive               got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] eps_in = -f/(1+f)                            got -0.0141274  want -0.0141274  (rel 0.00e+00, tol 1e-12)
+  [PASS] eps_out = -2 C12/C11 eps_in                  got  0.0131699  want  0.0131699  (rel 0.00e+00, tol 1e-12)
+    eps_in -1.413 %, eps_out +1.317 %, Tr(eps) -1.508 %
+
+=== Bir-Pikus valence edges: sum rule and limits ==============
+  [PASS] GaAs @ -2.0% : shear is traceless            got  0 eV  want  0 eV  (rel 0.00e+00, tol 1e-09)
+  [PASS] GaAs @ -0.5% : shear is traceless            got  1.11022e-16 eV  want  0 eV  (rel 1.11e-16, tol 1e-09)
+  [PASS] GaAs @ +0.5% : shear is traceless            got  5.55112e-17 eV  want  0 eV  (rel 5.55e-17, tol 1e-09)
+  [PASS] GaAs @ +2.0% : shear is traceless            got  1.66533e-16 eV  want  0 eV  (rel 1.67e-16, tol 1e-09)
+  [PASS] InAs @ -2.0% : shear is traceless            got  1.11022e-16 eV  want  0 eV  (rel 1.11e-16, tol 1e-09)
+  [PASS] InAs @ -0.5% : shear is traceless            got -3.33067e-16 eV  want  0 eV  (rel 3.33e-16, tol 1e-09)
+  [PASS] InAs @ +0.5% : shear is traceless            got -2.22045e-16 eV  want  0 eV  (rel 2.22e-16, tol 1e-09)
+  [PASS] InAs @ +2.0% : shear is traceless            got  0 eV  want  0 eV  (rel 0.00e+00, tol 1e-09)
+  [PASS] InP @ -2.0% : shear is traceless             got -6.93889e-17 eV  want  0 eV  (rel 6.94e-17, tol 1e-09)
+  [PASS] InP @ -0.5% : shear is traceless             got -6.93889e-17 eV  want  0 eV  (rel 6.94e-17, tol 1e-09)
+  [PASS] InP @ +0.5% : shear is traceless             got -1.80411e-16 eV  want  0 eV  (rel 1.80e-16, tol 1e-09)
+  [PASS] InP @ +2.0% : shear is traceless             got -5.68989e-16 eV  want  0 eV  (rel 5.69e-16, tol 1e-09)
+  [PASS] GaSb @ -2.0% : shear is traceless            got  1.11022e-16 eV  want  0 eV  (rel 1.11e-16, tol 1e-09)
+  [PASS] GaSb @ -0.5% : shear is traceless            got  0 eV  want  0 eV  (rel 0.00e+00, tol 1e-09)
+  [PASS] GaSb @ +0.5% : shear is traceless            got  0 eV  want  0 eV  (rel 0.00e+00, tol 1e-09)
+  [PASS] GaSb @ +2.0% : shear is traceless            got  0 eV  want  0 eV  (rel 0.00e+00, tol 1e-09)
+  [PASS] unstrained: HH = LH = VBM                    got  0 eV  want  0 eV  (rel 0.00e+00, tol 1e-12)
+  [PASS] unstrained: SO = VBM - Delta_SO              got -1.141 eV  want -1.141 eV  (rel 0.00e+00, tol 1e-12)
+  [PASS] HH-LH -> d as Delta_SO -> inf (D=10 eV)      got  0.0934595 eV  want  0.0939025 eV  (rel 4.72e-03, tol 1e-02)
+  [PASS] HH-LH -> d as Delta_SO -> inf (D=100 eV)     got  0.0938584 eV  want  0.0939025 eV  (rel 4.70e-04, tol 1e-03)
+  [PASS] HH-LH -> d as Delta_SO -> inf (D=1000 eV)    got  0.0938981 eV  want  0.0939025 eV  (rel 4.70e-05, tol 1e-04)
+  [PASS] mixing error falls as 1/Delta_SO             got  2.00047  want  2  (rel 2.35e-04, tol 5e-02)
+    shear parameter d = 93.9 meV; finite Delta_SO = 0.327 eV gives
+    HH-LH splitting = 78.9 meV for In0.2Ga0.8As/GaAs
+  [PASS] compressive: HH sits above LH                got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] HH-LH splitting is tens of meV               got  0.0789473 eV  want  0.08 eV  (rel 1.32e-02, tol 3e-01)
+  [PASS] tensile: LH sits above HH                    got  1  want  1  (rel 0.00e+00, tol 1e-09)
+
+=== Hydrostatic shift vs the measured pressure coefficient ====
+    GaAs: a_c -7.17, a_v +1.16, B 754 kbar -> dEg/dP 11.04 meV/kbar
+  [PASS] GaAs: dEg/dP is 5-20 meV/kbar                got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] GaAs: compression widens the gap             got  1  want  1  (rel 0.00e+00, tol 1e-09)
+    InAs: a_c -5.08, a_v +1.00, B 579 kbar -> dEg/dP 10.49 meV/kbar
+  [PASS] InAs: dEg/dP is 5-20 meV/kbar                got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] InAs: compression widens the gap             got  1  want  1  (rel 0.00e+00, tol 1e-09)
+    InP: a_c -5.04, a_v +1.27, B 711 kbar -> dEg/dP 8.87 meV/kbar
+  [PASS] InP: dEg/dP is 5-20 meV/kbar                 got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] InP: compression widens the gap              got  1  want  1  (rel 0.00e+00, tol 1e-09)
+    AlAs: a_c -5.64, a_v +2.47, B 773 kbar -> dEg/dP 10.50 meV/kbar
+  [PASS] AlAs: dEg/dP is 5-20 meV/kbar                got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] AlAs: compression widens the gap             got  1  want  1  (rel 0.00e+00, tol 1e-09)
+    GaP: a_c -7.14, a_v +1.70, B 882 kbar -> dEg/dP 10.02 meV/kbar
+  [PASS] GaP: dEg/dP is 5-20 meV/kbar                 got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] GaP: compression widens the gap              got  1  want  1  (rel 0.00e+00, tol 1e-09)
+    AlP: a_c -5.70, a_v +1.50, B 863 kbar -> dEg/dP 8.34 meV/kbar
+  [PASS] AlP: dEg/dP is 5-20 meV/kbar                 got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] AlP: compression widens the gap              got  1  want  1  (rel 0.00e+00, tol 1e-09)
+    GaSb: a_c -7.50, a_v +0.79, B 563 kbar -> dEg/dP 14.72 meV/kbar
+  [PASS] GaSb: dEg/dP is 5-20 meV/kbar                got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] GaSb: compression widens the gap             got  1  want  1  (rel 0.00e+00, tol 1e-09)
+    InSb: a_c -6.94, a_v +0.36, B 477 kbar -> dEg/dP 15.30 meV/kbar
+  [PASS] InSb: dEg/dP is 5-20 meV/kbar                got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] InSb: compression widens the gap             got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] GaAs dEg/dP against the measured 10.8 meV/kbar got  0.0110424 eV/kbar  want  0.0108 eV/kbar  (rel 2.24e-02, tol 1e-01)
+
+=== Valence density of states under splitting =================
+  [PASS] unstrained Nv is reproduced                  got  5.86683e+18 cm^-3  want  5.86683e+18 cm^-3  (rel 1.75e-16, tol 1e-12)
+  [PASS] splitting reduces Nv below the unstrained value got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] large splitting keeps heavy holes only       got  5.18827e+18 cm^-3  want  5.18827e+18 cm^-3  (rel 0.00e+00, tol 1e-03)
+
+=== Matthews-Blakeslee critical thickness =====================
+    In0.2Ga0.8As on GaAs: h_c = 101.5 A = 10.15 nm
+  [PASS] In0.2Ga0.8As/GaAs h_c                        got  10.1496 nm  want  10 nm  (rel 1.50e-02, tol 5e-01)
+  [PASS] lattice matched: no critical thickness       got  1  want  1  (rel 0.00e+00, tol 1e-09)
+    f = 0.5 % -> h_c = 41.30 nm
+  [PASS] h_c decreases with mismatch (0.5 %)          got  1  want  1  (rel 0.00e+00, tol 1e-09)
+    f = 1.0 % -> h_c = 16.69 nm
+  [PASS] h_c decreases with mismatch (1.0 %)          got  1  want  1  (rel 0.00e+00, tol 1e-09)
+    f = 2.0 % -> h_c = 6.25 nm
+  [PASS] h_c decreases with mismatch (2.0 %)          got  1  want  1  (rel 0.00e+00, tol 1e-09)
+    f = 4.0 % -> h_c = 1.98 nm
+  [PASS] h_c decreases with mismatch (4.0 %)          got  1  want  1  (rel 0.00e+00, tol 1e-09)
+
+=== Device level: strained vs unstrained ======================
+    well: Eg 1.1324 -> 1.2043 eV, Ec 0.4352 -> 0.5371 eV
+  [PASS] GaAs buffer is unstrained                    got  0  want  0  (rel 0.00e+00, tol 1e-12)
+  [PASS] strained gap exceeds the unstrained one      got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] strain raises the conduction band            got  0.101853 eV  want  0.1 eV  (rel 1.85e-02, tol 3e-01)
+  [PASS] HH transition is the lower one (compressive) got  1  want  1  (rel 0.00e+00, tol 1e-09)
+    GaInAs(0.47) on InP: a 5.8679 vs 5.8697 A, f = -0.0302 %
+  [PASS] In0.53Ga0.47As is lattice matched to InP     got  0.000302145  want  0  (rel 3.02e-04, tol 1e-03)
+  [PASS] lattice matched: only a few meV of shift     got  0.00324739 eV  want  0 eV  (rel 3.25e-03, tol 6e-03)
+  [PASS] strained stack converges                     got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] strained stack converges with quantum correction got  1  want  1  (rel 0.00e+00, tol 1e-09)
+  [PASS] self-substrate leaves the model untouched    got  0 eV  want  0 eV  (rel 0.00e+00, tol 1e-12)
+  [PASS] self-substrate leaves VBO untouched          got  0 eV  want  0 eV  (rel 0.00e+00, tol 1e-12)
+
+ALL STRAIN CHECKS PASSED

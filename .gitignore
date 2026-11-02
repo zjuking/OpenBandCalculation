@@ -7,9 +7,6 @@ dist/
 .venv/
 venv/
 
-# Paper files — not pushed to GitHub yet
-paper/
-
 # session / IDE state
 .workbuddy/
 .workbuddy-ai/
