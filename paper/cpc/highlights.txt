@@ -1,5 +1,0 @@
-One-dimensional III-V solver: electrostatics, transport, confinement.
-Cancellation-free Scharfetter-Gummel flux gives a zero equilibrium current.
-Terminal current read where it is clean; its noise level is reported, not hidden.
-Verification checks classified by kind, with negative controls on the quantum correction.
-A bias point converges in two Gummel sweeps, about 1.5 s on one core.

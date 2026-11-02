@@ -15,6 +15,11 @@ venv/
 # scratch
 *.log
 
+# Paper directory — kept out of the GitHub sync.  The manuscript, reproduction
+# scripts, figures and benchmark data live only in the local working tree (and
+# are archived separately for the CPC submission via paper/cpc/make_submission.py).
+paper/
+
 # LaTeX build artefacts (paper/cpc/data/*.out are test logs -- keep those)
 *.aux
 *.bbl
