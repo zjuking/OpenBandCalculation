@@ -5,10 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "obpds"
 version = "2.0.0"
-description = (
-    "Open Band Parameters Device Simulator - 1D electrostatic and "
-    "drift-diffusion solver for III-V semiconductor heterostructures"
-)
+description = "Open Band Parameters Device Simulator - 1D electrostatic and drift-diffusion solver for III-V semiconductor heterostructures"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "AGPL-3.0-or-later" }
@@ -34,7 +31,10 @@ web = [
     "uvicorn[standard]>=0.27",
     "pydantic>=2.6",
 ]
-dev = ["pytest>=7.4"]
+dev = [
+    "pytest>=7.4",
+    "httpx>=0.27",   # fastapi.testclient.TestClient (used by tests/test_web_api.py)
+]
 
 [project.urls]
 Homepage = "https://github.com/scott-maddox/obpds"
@@ -53,3 +53,8 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    # starlette 1.10 marks `httpx` as deprecated in favour of `httpx2`; the
+    # TestClient still works, and the notice is upstream noise, not ours.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]
