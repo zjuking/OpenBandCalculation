@@ -32,7 +32,7 @@ UI_BAND = ["x_nm", "Ec_Gamma", "Ec_L", "Ec_X", "Ev", "Ei", "Fn", "Fp",
            # drawn as separate lines whenever strain splits them
            "Ev_HH", "Ev_LH", "Ev_SO"]
 UI_DD = ["J", "Jn_contact", "Jp_contact", "gummel_iterations", "Jtotal"]
-UI_ROWS = ["material", "thickness_nm", "Eg", "Eg_end", "doping_cm3",
+UI_ROWS = ["material", "label", "thickness_nm", "Eg", "Eg_end", "doping_cm3",
            "lattice_constant", "mismatch", "dielectric"]
 UI_ROWS_STRAIN = ["substrate", "substrate_a", "mismatch_sub", "eps_in",
                   "eps_out", "h_c_nm", "pseudomorphic", "strain_applied"]
@@ -40,9 +40,21 @@ UI_QUANTUM = ["n_is_quantum", "subbands"]
 UI_SUBBANDS = ["levels_eV", "bound", "E_cut_eV", "sheet_density_cm2",
                "population_cm2", "psi"]
 
+# The layer editor labels the composition field with the element x counts, and
+# the layer table shows a readable label instead of the Python repr -- both are
+# read straight off the API.
+UI_MATERIAL = ["name", "ternary", "x_label", "x_default"]
+UI_ROW_LABEL = "label"
+UI_PRESET_SWEEP = ["V", "iv", "cv"]
+UI_SWEEP_WINDOW = ["start", "stop", "num"]
+
 
 def run_all(get, post, check):
     """Drive every contract check through ``get``/``post``; report via ``check``."""
+
+    def _spec(preset):
+        """Preset minus its UI-only sweep block, i.e. a plain DeviceSpec."""
+        return {k: v for k, v in preset.items() if k != "sweep"}
 
     def wait(jid, budget=300.0):
         t0 = time.time()
@@ -60,8 +72,36 @@ def run_all(get, post, check):
     presets = get("/api/presets")["presets"]
     print(f"=== presets: {len(presets)}")
 
+    # The workbench fills the composition label from x_label ("Al" for AlGaAs,
+    # "Ga" for GaInAs); without it the user has no way to know which way round
+    # the fraction goes.
+    mats = get("/api/materials")["materials"]
+    miss = sorted({k for k in UI_MATERIAL for m in mats if k not in m})
+    check("material catalogue fields", not miss, f"missing={miss}")
+    ternary = [m for m in mats if m["ternary"]]
+    check("ternaries name their composition element",
+          all(m.get("x_label") for m in ternary),
+          f"{sum(1 for m in ternary if not m.get('x_label'))} without x_label")
+    check("binaries have no composition",
+          all(m.get("x_label") is None and m.get("x_default") is None
+              for m in mats if not m["ternary"]))
+
+    for name, dev in presets.items():
+        # A preset is also a bias window; the front end applies the sweep block
+        # when the stack is loaded.
+        sw = dev.get("sweep") or {}
+        miss = [k for k in UI_PRESET_SWEEP if k not in sw]
+        check(f"{name}: preset sweep block", not miss, f"missing={miss}")
+        if not miss:
+            for kind in ("iv", "cv"):
+                w = sw[kind]
+                miss = [k for k in UI_SWEEP_WINDOW if k not in w]
+                ok = not miss and w["num"] >= 5 and w["stop"] > w["start"]
+                check(f"{name}: {kind} window", ok, f"{w}")
+
     for name, dev in presets.items():
         print(f"\n=== {name}")
+        dev = {k: v for k, v in dev.items() if k != "sweep"}   # DeviceSpec
         j = run("solve", {"device": dev, "mode": "equilibrium", "V": 0.0})
         if j["status"] != "done":
             check("equilibrium solve", False, (j.get("error") or ""))
@@ -88,7 +128,7 @@ def run_all(get, post, check):
 
     # biased solve + sweep on the diode
     print("\n=== GaAs pn diode: drift-diffusion + sweep")
-    dev = dict(presets["GaAs pn diode"])
+    dev = _spec(presets["GaAs pn diode"])
     dev["N"] = 200
     j = run("solve", {"device": dev, "mode": "drift_diffusion", "V": 0.6})
     check("drift-diffusion solve", j["status"] == "done", j.get("error", ""))
@@ -123,7 +163,7 @@ def run_all(get, post, check):
 
     # Self-consistent Schrodinger-Poisson on the HEMT stack
     print("\n=== AlGaAs/GaAs HEMT (2DEG): quantum correction")
-    dev = dict(presets["AlGaAs/GaAs HEMT (2DEG)"])
+    dev = _spec(presets["AlGaAs/GaAs HEMT (2DEG)"])
     dev["N"] = 400
     j = run("solve", {"device": dev, "mode": "equilibrium", "V": 0.0,
                       "quantum": True, "n_states": 8}, budget=400)
@@ -160,7 +200,7 @@ def run_all(get, post, check):
 
     # Pseudomorphic strain
     print("\n=== Strained InGaAs/GaAs quantum well (2DEG): pseudomorphic strain")
-    dev = dict(presets["Strained InGaAs/GaAs quantum well (2DEG)"])
+    dev = _spec(presets["Strained InGaAs/GaAs quantum well (2DEG)"])
     check("preset carries a substrate", dev.get("substrate") == "GaAs",
           f"substrate={dev.get('substrate')}")
     rows = post("/api/describe", dev).get("rows") or []

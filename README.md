@@ -63,14 +63,17 @@ responsive and lets an I–V sweep report progress point by point.
 
 | Panel | Contents |
 | --- | --- |
-| Structure preset | Seven ready-made stacks, from a GaAs pn diode to a strained InGaAs/GaAs quantum well |
-| Epitaxial stack | Per-layer editor: material and alloy composition, thickness, p/n/i doping with a slider, live Eg / lattice constant / mobility readout |
+| Structure preset | Seven ready-made stacks, from a GaAs pn diode to a strained InGaAs/GaAs quantum well. Each one also carries the bias window that shows it off — forward bias for a diode, reverse bias for the photodiode, fewer points where the mesh is finer |
+| Epitaxial stack | Per-layer editor: material and alloy composition, thickness, p/n/i doping with a slider, live Eg / lattice constant / mobility readout. A ternary can be graded across the layer; the composition fields name the element `x` counts (`x (Al)` for AlGaAs, `x (Ga)` for GaInAs) |
 | Contacts | Ohmic or Schottky per terminal, with the work function where the model uses it |
 | Global parameters | Temperature, mesh size, statistics (Kane non-parabolic / Fermi–Dirac / Boltzmann), bias, p-side, substrate and strain reference, lifetimes, radiative coefficient |
-| Results | Six metric cards (temperature, statistics, minimum gap, peak field, current density, mesh) over six tabs: bands, carriers and field, confined wavefunctions, I–V, C–V, layer parameters |
+| Results | Six metric cards (temperature, statistics, minimum gap, peak field, current density, mesh) over six tabs: bands, carriers and field, confined wavefunctions, I–V, C–V, layer parameters. I–V and C–V keep separate bias windows |
+| Configuration | Import/export of the whole setup as JSON (stack, contacts, solver settings, bias windows, results summary), plus CSV of whichever tab is on screen |
 
 Every plot is inline SVG drawn from the same palette as the page, with layer
 boundaries shaded, a hover crosshair readout and clickable legend entries.
+Long jobs report progress in the pill at the bottom: a step count and an ETA for
+sweeps, a running clock for single solves.
 
 ![I–V sweep in the OBPDS web workbench](docs/web-results.png)
 

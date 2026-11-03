@@ -717,6 +717,16 @@ tbody tr:hover td { background: var(--primary-bg); }
   background: var(--primary);
   transition: width .2s;
 }
+/* Single solves report no step count, so the bar sweeps instead of sitting at
+   zero and looking hung. */
+.busy.indet .bar i {
+  width: 38%;
+  animation: busy-slide 1.15s ease-in-out infinite;
+}
+@keyframes busy-slide {
+  0%   { transform: translateX(-110%); }
+  100% { transform: translateX(300%); }
+}
 #busyText { font-family: var(--mono); font-weight: 600; }
 
 /* ── scrollbars ─────────────────────────────────────────────────────────── */

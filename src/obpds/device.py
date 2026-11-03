@@ -298,7 +298,8 @@ class TwoTerminalDevice:
                 p, p1 = strain_bands([p, p1], a_sub, T)[0]
             a = p["lattice_constant"]
             row = dict(
-                material=str(layer), thickness_nm=layer.thickness * 1e7,
+                material=str(layer), label=layer.label,
+                thickness_nm=layer.thickness * 1e7,
                 Eg=p["Eg"], Eg_end=p1["Eg"],
                 doping_cm3=layer.Nd - layer.Na,
                 lattice_constant=a,

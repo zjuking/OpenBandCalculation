@@ -361,7 +361,9 @@ const state = {
   layers: [],             // { thickness_nm, material, composition,
                           //   composition_end, doping }
   solution: null,
-  sweep: null,            // { V, J } or { V, C }
+  sweep: null,            // most recent sweep, either kind
+  sweeps: { iv: null, cv: null },   // kept separately so one does not evict the other
+  rows: null,             // last /api/describe table, kept for the CSV export
   charts: { band: null, carrier: null, iv: null, cv: null, wf: null },
 };
 
@@ -413,7 +415,7 @@ function writeDevice(spec) {
 function materialOptions(sel, cur) {
   sel.innerHTML = state.materials.map(m =>
     `<option value="${m.name}"${m.name === cur ? " selected" : ""}>${m.name}` +
-    `${m.ternary ? " (x)" : ""}</option>`).join("");
+    `${m.ternary ? ` (x: ${m.x_label})` : ""}</option>`).join("");
 }
 
 function renderLayers() {
@@ -422,6 +424,13 @@ function renderLayers() {
   state.layers.forEach((L, i) => {
     const meta = state.materials.find(m => m.name === L.material) || {};
     const ternary = !!meta.ternary;
+    // x is not the same element in every alloy (Al_xGa_1-xAs vs Ga_xIn_1-xAs),
+    // so the field says which one it is rather than a bare "x".
+    const xTag = meta.x_label ? ` (${meta.x_label})` : "";
+    const x0 = L.composition ?? meta.x_default ?? 0.5;
+    const x1 = L.composition_end ?? x0;
+    const graded = ternary && L.composition_end !== undefined &&
+      Math.abs(x1 - x0) > 1e-9;
     const d = L.doping || 0;
     const type = d > 0 ? "p" : d < 0 ? "n" : "i";
     const exp = d ? Math.log10(Math.abs(d)) : 16;
@@ -429,7 +438,7 @@ function renderLayers() {
     box.className = "layer";
     box.innerHTML = `
       <div class="head">
-        <span class="idx">Layer ${i + 1}</span>
+        <span class="idx">Layer ${i + 1}${graded ? " · graded" : ""}</span>
         <span>
           <button class="btn tiny" data-act="up">↑</button>
           <button class="btn tiny" data-act="down">↓</button>
@@ -441,11 +450,11 @@ function renderLayers() {
           <select data-f="material"></select>
         </label>
         ${ternary ? `
-        <label>x start <input type="number" step="0.01" min="0" max="1"
-               value="${L.composition ?? 0.3}" data-f="composition"></label>
-        <label>x end <input type="number" step="0.01" min="0" max="1"
-               value="${L.composition_end ?? (L.composition ?? 0.3)}"
-               data-f="composition_end"></label>` : ""}
+        <label>x${xTag} start <input type="number" step="0.01" min="0" max="1"
+               value="${x0}" data-f="composition"></label>
+        <label>x${xTag} end <input type="number" step="0.01" min="0" max="1"
+               value="${x1}" data-f="composition_end"
+               title="Set the same value as the start to make the layer uniform"></label>` : ""}
         <label>Thickness (nm)
           <input type="number" step="5" min="0.5"
                  value="${L.thickness_nm}" data-f="thickness_nm"></label>
@@ -472,7 +481,7 @@ function renderLayers() {
     sel.onchange = () => {
       const m = state.materials.find(x => x.name === sel.value);
       L.material = sel.value;
-      if (m && m.ternary) L.composition = L.composition ?? 0.3;
+      if (m && m.ternary) L.composition = L.composition ?? m.x_default ?? 0.5;
       else { delete L.composition; delete L.composition_end; }
       renderLayers();
     };
@@ -511,42 +520,90 @@ async function refreshInfo(box, L) {
   const meta = state.materials.find(m => m.name === L.material);
   const info = box.querySelector('[data-f="info"]');
   if (!meta) { info.textContent = ""; return; }
+  const T = +$("T").value || 300;
+  const url = (comp) =>
+    `/api/properties?material=${encodeURIComponent(L.material)}` +
+    (comp === null || comp === undefined ? "" : `&composition=${comp}`) +
+    `&T=${T}`;
   try {
     // Sending composition= empty hits a 422 on the float parameter, so the
     // key is only added when the layer actually has a composition.
-    const comp = (L.composition === undefined || L.composition === null)
-      ? "" : `&composition=${L.composition}`;
-    const p = await api(`/api/properties?material=${encodeURIComponent(L.material)}` +
-      `${comp}&T=${+$("T").value || 300}`);
-    info.textContent = `Eg ${fmt(p.Eg, 4)} eV · ${p.direct ? "direct" : "indirect"} gap` +
-      ` · a ${fmt(p.lattice_constant, 5)} Å · εr ${fmt(p.dielectric, 3)}` +
-      ` · μn ${fmt(p.mu_n, 3)} / μp ${fmt(p.mu_p, 3)} cm²/Vs`;
+    const p = await api(url(L.composition));
+    const line = (q, tag) =>
+      `Eg ${fmt(q.Eg, 4)}${tag || ""} eV · ${q.direct ? "direct" : "indirect"}` +
+      ` · a ${fmt(q.lattice_constant, 5)} Å · εr ${fmt(q.dielectric, 3)}` +
+      ` · μn ${fmt(q.mu_n, 3)} / μp ${fmt(q.mu_p, 3)} cm²/Vs`;
+
+    // A graded layer has two gaps, one at each end; showing only the start one
+    // makes the layer look uniform.
+    const graded = L.composition_end !== undefined &&
+      Math.abs((L.composition_end ?? 0) - (L.composition ?? 0)) > 1e-9;
+    if (graded) {
+      const p1 = await api(url(L.composition_end));
+      info.textContent = line(p) + ` → Eg ${fmt(p1.Eg, 4)} eV at x = ${L.composition_end}`;
+    } else {
+      info.textContent = line(p);
+    }
   } catch { info.textContent = `Eg ${fmt(meta.Eg, 4)} eV`; }
 }
 
 /* ──────────────────────────── job polling ──────────────────────────────── */
 
+/* A single solve has no step count to report, so the bar goes indeterminate
+   and the label carries the elapsed time instead of a frozen "0/0". */
 function busy(on, text = "Computing…", frac = null) {
   const b = $("busy");
   b.classList.toggle("show", on);
-  $("busyText").textContent = text;
-  b.querySelector("i").style.width = (frac === null ? 100 : frac * 100) + "%";
+  b.classList.toggle("indet", on && frac === null);
+  // Hiding the pill must not blank the label: the text is the last thing the
+  // user reads about the run, and resetting it to "Computing…" looks like a
+  // crash when the panel reappears a moment later.
+  if (on) $("busyText").textContent = text;
+  const bar = b.querySelector("i");
+  if (frac === null) bar.style.width = "";
+  else bar.style.width = (frac * 100) + "%";
 }
 
 async function runJob(kind, payload, label) {
-  busy(true, label, 0);
+  const t0 = performance.now();
+  const secs = () => (performance.now() - t0) / 1000;
+  busy(true, `${label} — 0.0 s`, null);
   setStatus(label, "warn");
-  const { job_id } = await api(payload.url, payload.body);
-  for (;;) {
-    await new Promise(r => setTimeout(r, 250));
-    const j = await api(`/api/job/${job_id}`);
-    if (j.status === "error") {
-      busy(false); setStatus("Solve failed", "err");
-      throw new Error(j.error || "unknown solver error");
+  let job_id;
+  try {
+    ({ job_id } = await api(payload.url, payload.body));
+  } catch (e) {
+    // A rejected submission must not leave the bar spinning forever.
+    busy(false);
+    throw e;
+  }
+  try {
+    for (;;) {
+      await new Promise(r => setTimeout(r, 250));
+      const j = await api(`/api/job/${job_id}`);
+      if (j.status === "error") {
+        setStatus("Solve failed", "err");
+        throw new Error(j.error || "unknown solver error");
+      }
+      let text;
+      // A single solve reports total = 1, which is not a progress bar: keep
+      // the indeterminate sweep and show the clock instead of a frozen "0/1".
+      const stepped = j.total > 1;
+      if (stepped) {
+        // Sweeps know how many points are left, so they get a real ETA.
+        const done = j.progress || 0;
+        const eta = done > 0 ? secs() * (j.total - done) / done : null;
+        text = `${label} — ${done}/${j.total} · ${secs().toFixed(1)} s elapsed` +
+          (eta !== null && eta > 1 && done < j.total
+            ? ` · about ${Math.ceil(eta)} s left` : "");
+      } else {
+        text = `${label} — ${secs().toFixed(1)} s`;
+      }
+      busy(true, text, stepped ? j.progress / j.total : null);
+      if (j.status === "done") return j.result;
     }
-    busy(true, `${label}  ${j.progress}/${j.total}`,
-         j.total ? j.progress / j.total : 0);
-    if (j.status === "done") { busy(false); return j.result; }
+  } finally {
+    busy(false);
   }
 }
 
@@ -602,22 +659,201 @@ function updateCurrentMetric(sw) {
 }
 
 async function doSweep(kind) {
+  // I–V and C–V keep their own bias windows: a photodiode wants reverse bias
+  // for both, a diode wants forward bias for I–V and a small reverse window
+  // for C–V, and one shared range cannot serve both.
+  const p = kind === "cv" ? "cv" : "iv";
   const body = {
     device: readDevice(),
     kind,
-    Vstart: +$("ivStart").value,
-    Vstop: +$("ivStop").value,
-    Vnum: +$("ivNum").value,
+    Vstart: +$(p + "Start").value,
+    Vstop: +$(p + "Stop").value,
+    Vnum: +$(p + "Num").value,
   };
   try {
     const res = await runJob("sweep", { url: "/api/sweep", body },
       kind === "iv" ? "I–V sweep" : "C–V sweep");
-    state.sweep = { kind, ...res };
+    state.sweeps[kind] = { kind, ...res };
+    state.sweep = state.sweeps[kind];
     if (kind === "iv") { drawIV(); updateCurrentMetric(res); switchTab("iv"); }
     else { drawCV(); switchTab("cv"); }
     setStatus(`${kind.toUpperCase()} sweep complete`, "ok");
   } catch (e) {
     setStatus("Error: " + e.message, "err");
+  }
+}
+
+/* ──────────────────────── configuration in / out ───────────────────────── */
+
+/* What the page currently has: the device the solver would receive right now,
+   the bias windows, and the results on screen.  Kept in one place so the
+   export, the import and the presets all agree on the shape. */
+function readSweep() {
+  return {
+    V: +$("V").value || 0,
+    iv: { start: +$("ivStart").value, stop: +$("ivStop").value,
+          num: +$("ivNum").value },
+    cv: { start: +$("cvStart").value, stop: +$("cvStop").value,
+          num: +$("cvNum").value },
+  };
+}
+
+function applySweep(sw) {
+  if (!sw) return;
+  const set = (id, v) => {
+    if (v !== undefined && v !== null && $(id)) $(id).value = v;
+  };
+  set("V", sw.V);
+  for (const k of ["iv", "cv"]) {
+    if (!sw[k]) continue;
+    set(k + "Start", sw[k].start);
+    set(k + "Stop", sw[k].stop);
+    set(k + "Num", sw[k].num);
+  }
+}
+
+function fileStem() {
+  const p = $("preset").value || "device";
+  const s = state.solution;
+  const v = s && s.V !== undefined ? `_V${Number(s.V).toFixed(2)}` : "";
+  return "obpds_" + p.replace(/[^\w]+/g, "_").toLowerCase() + v;
+}
+
+function download(name, text, mime) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type: mime }));
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function csvFrom(header, columns) {
+  const n = Math.max(...columns.map(c => (c || []).length));
+  const lines = [header.join(",")];
+  for (let i = 0; i < n; i++) {
+    lines.push(columns.map(col => {
+      const v = col ? col[i] : "";
+      return (v === null || v === undefined || (typeof v === "number" && !isFinite(v)))
+        ? "" : String(v);
+    }).join(","));
+  }
+  return lines.join("\n");
+}
+
+function exportJSON() {
+  const s = state.solution;
+  const pack = (sw) => sw ? {
+    kind: sw.kind, V: sw.V,
+    values: sw.kind === "iv" ? sw.J : sw.C,
+    ideality: sw.ideality || null,
+    meta: sw.meta || null,
+  } : null;
+  const payload = {
+    format: "obpds-config",
+    version: 2,
+    saved: new Date().toISOString(),
+    device: readDevice(),
+    sweep: readSweep(),
+    results: {
+      solve: s ? {
+        mode: s.mode, V: s.V, converged: s.converged !== false,
+        T: s.meta && s.meta.T, N: s.meta && s.meta.N,
+        approximation: s.meta && s.meta.approx,
+        total_nm: s.total_nm,
+        n_is_quantum: !!s.n_is_quantum,
+        subbands: s.subbands
+          ? { levels_eV: s.subbands.levels_eV,
+              bound: s.subbands.bound,
+              population_cm2: s.subbands.population_cm2,
+              sheet_density_cm2: s.subbands.sheet_density_cm2,
+              E_cut_eV: s.subbands.E_cut_eV }
+          : null,
+      } : null,
+      // Both curves, not just whichever ran last: an I–V export that has
+      // silently lost the C–V is worse than no export.
+      sweeps: { iv: pack(state.sweeps.iv), cv: pack(state.sweeps.cv) },
+      layers: state.rows || null,
+    },
+  };
+  download(fileStem() + ".json", JSON.stringify(payload, null, 2),
+           "application/json");
+  setStatus("Configuration exported", "ok");
+}
+
+function exportCSV() {
+  const tab = document.querySelector(".tab.active");
+  const name = tab ? tab.dataset.tab : "band";
+  const s = state.solution;
+
+  if (name === "iv" || name === "cv") {
+    const sw = state.sweeps[name];
+    if (!sw) {
+      setStatus("Run the " + name.toUpperCase() + " sweep first", "warn");
+      return;
+    }
+    const vals = name === "iv" ? sw.J : sw.C;
+    download(fileStem() + "_" + name + ".csv",
+             csvFrom(["V", name === "iv" ? "J" : "C"], [sw.V, vals]),
+             "text/csv");
+    setStatus(name.toUpperCase() + " data exported", "ok");
+    return;
+  }
+
+  if (name === "table") {
+    if (!state.rows || !state.rows.length) {
+      setStatus("Layer table not ready", "warn");
+      return;
+    }
+    const keys = ["label", "thickness_nm", "Eg", "Eg_end", "doping_cm3",
+                  "lattice_constant", "mismatch", "dielectric", "eps_in",
+                  "eps_out", "h_c_nm"];
+    const cols = keys.map(k => state.rows.map(r => r[k]));
+    download(fileStem() + "_layers.csv",
+             csvFrom(keys, cols), "text/csv");
+    setStatus("Layer table exported", "ok");
+    return;
+  }
+
+  if (!s) { setStatus("Solve first — there is no profile to export", "warn"); return; }
+  const keys = [["x_nm", "x (nm)"], ["Ec_Gamma", "Ec_Gamma (eV)"],
+                ["Ec_L", "Ec_L (eV)"], ["Ec_X", "Ec_X (eV)"],
+                ["Ev", "Ev (eV)"], ["Fn", "Fn (eV)"], ["Fp", "Fp (eV)"],
+                ["n", "n (cm^-3)"], ["p", "p (cm^-3)"],
+                ["field", "field (V/cm)"]];
+  const cols = keys.map(([k]) => s[k]);
+  download(fileStem() + "_profile.csv",
+           csvFrom(keys.map(([, h]) => h), cols), "text/csv");
+  setStatus("Profile exported", "ok");
+}
+
+async function importConfig(file) {
+  let obj;
+  try {
+    obj = JSON.parse(await file.text());
+  } catch (e) {
+    setStatus("Not a JSON file: " + e.message, "err");
+    return;
+  }
+  const dev = obj.device || (obj.layers ? obj : null);
+  if (!dev || !dev.layers || !dev.layers.length) {
+    setStatus("This JSON has no device block", "err");
+    return;
+  }
+  try {
+    writeDevice(dev);
+    applySweep(obj.sweep);
+    state.solution = null;
+    state.sweep = null;
+    state.sweeps = { iv: null, cv: null };
+    state.rows = null;
+    resetViews();
+    $("preset").value = "";
+    setStatus("Imported " + file.name, "ok");
+    drawTable();
+  } catch (e) {
+    setStatus("Import failed: " + e.message, "err");
   }
 }
 
@@ -844,8 +1080,8 @@ function drawSolution() {
 }
 
 function drawIV() {
-  const sw = state.sweep;
-  if (!sw || sw.kind !== "iv") return;
+  const sw = state.sweeps.iv;
+  if (!sw) return;
   const V = sw.V, J = sw.J;
   const log = $("ivLog").checked;
   const data = log ? J.map(v => (isFinite(v) && v !== 0 ? Math.abs(v) : NaN)) : J;
@@ -867,8 +1103,8 @@ function drawIV() {
 }
 
 function drawCV() {
-  const sw = state.sweep;
-  if (!sw || sw.kind !== "cv") return;
+  const sw = state.sweeps.cv;
+  if (!sw) return;
   const V = sw.V, C = sw.C;
   state.charts.cv = {
     x: V,
@@ -956,12 +1192,13 @@ function drawWF() {
 async function drawTable() {
   try {
     const { rows } = await api("/api/describe", readDevice());
+    state.rows = rows;
     const strained = rows.some(r => r.substrate_a !== undefined);
     const head = ["Layer", "Thickness (nm)", "Eg (eV)", "ΔEc/ΔEg", "Doping (cm⁻³)",
                   "a (Å)", "Mismatch %", "εr"]
       .concat(strained ? ["ε∥ %", "ε⊥ %", "h_c (nm)"] : []);
     const cell = (v, d = 4) => `<td>${fmt(v, d)}</td>`;
-    const body = rows.map(r => `<tr><td>${r.material}</td>` +
+    const body = rows.map(r => `<tr><td>${r.label || r.material}</td>` +
       cell(r.thickness_nm) + cell(r.Eg) + cell(r.Eg_end - r.Eg, 3) +
       cell(r.doping_cm3, 3) + cell(r.lattice_constant, 5) +
       cell(r.mismatch * 100, 3) + cell(r.dielectric) +
@@ -995,6 +1232,21 @@ async function drawTable() {
 /* An empty chart still has to look deliberate: one dashed frame and a line of
    instruction, otherwise the panel reads as broken. */
 const EMPTY_CFG = { x: [], series: [], bands: [], legend: null };
+
+/* Blank every result view.  Loading a preset or importing a file replaces the
+   device, and curves drawn for the previous stack are worse than no curves. */
+function resetViews() {
+  state.charts = { band: null, carrier: null, iv: null, cv: null, wf: null };
+  renderMetrics(null);
+  ["chartCarrier", "chartIV", "chartCV", "chartWF"].forEach(id => {
+    $(id).innerHTML = "";
+  });
+  ["legendBand", "legendCarrier", "legendWF"].forEach(id => { $(id).innerHTML = ""; });
+  ["readBand", "readCarrier", "readIV", "readCV", "readWF"].forEach(id => {
+    $(id).innerHTML = "";
+  });
+  drawChart($("chartBand"), EMPTY_CFG);
+}
 
 function switchTab(name) {
   document.querySelectorAll(".tab").forEach(t =>
@@ -1032,25 +1284,30 @@ async function init() {
   const pre = await api("/api/presets").catch(() => null);
   const sel = $("preset");
   if (pre) {
-    sel.innerHTML = Object.keys(pre.presets).map(k =>
-      `<option value="${k}">${k}</option>`).join("");
-    sel.onchange = () => {
-      writeDevice(pre.presets[sel.value]);
+    sel.innerHTML = `<option value="">— custom / imported —</option>` +
+      Object.keys(pre.presets).map(k =>
+        `<option value="${k}">${k}</option>`).join("");
+
+    const loadPreset = (name) => {
+      const spec = pre.presets[name];
+      if (!spec) return;
+      writeDevice(spec);
+      // A preset is a starting point, not just a stack: it also knows which
+      // bias window shows it off.
+      applySweep(spec.sweep);
       state.solution = null; state.sweep = null;
-      // A new stack invalidates every curve on screen; blank them rather than
-      // leave the previous structure's bands under a new header.
-      state.charts = { band: null, carrier: null, iv: null, cv: null, wf: null };
-      renderMetrics(null);
-      ["chartBand", "chartCarrier", "chartIV", "chartCV"].forEach(id => {
-        $(id).innerHTML = "";
-      });
-      ["legendBand", "legendCarrier", "legendWF"].forEach(id => { $(id).innerHTML = ""; });
-      ["readBand", "readCarrier", "readIV", "readCV", "readWF"].forEach(id => { $(id).innerHTML = ""; });
-      drawChart($("chartBand"), EMPTY_CFG);
-      setStatus("Loaded " + sel.value);
+      state.sweeps = { iv: null, cv: null };
+      state.rows = null;
+      resetViews();
+      setStatus("Loaded " + name);
       drawTable();
     };
-    writeDevice(pre.presets[sel.value]);
+    sel.onchange = () => { if (sel.value) loadPreset(sel.value); };
+
+    const first = Object.keys(pre.presets)[0];
+    sel.value = first;
+    writeDevice(pre.presets[first]);
+    applySweep(pre.presets[first].sweep);
   } else {
     state.layers = [{ thickness_nm: 200, material: "GaAs", doping: 1e17 },
                     { thickness_nm: 200, material: "GaAs", doping: -1e17 }];
@@ -1075,6 +1332,15 @@ async function init() {
   $("runDD").onclick = () => doSolve("drift_diffusion");
   $("runIV").onclick = () => doSweep("iv");
   $("runCV").onclick = () => doSweep("cv");
+
+  $("importBtn").onclick = () => $("importFile").click();
+  $("importFile").onchange = async (ev) => {
+    const f = ev.target.files && ev.target.files[0];
+    if (f) await importConfig(f);
+    ev.target.value = "";          // so the same file can be re-imported
+  };
+  $("exportJson").onclick = exportJSON;
+  $("exportCsv").onclick = exportCSV;
 
   document.querySelectorAll(".tab").forEach(t =>
     t.onclick = () => switchTab(t.dataset.tab));

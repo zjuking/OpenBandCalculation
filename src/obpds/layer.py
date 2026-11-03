@@ -89,6 +89,13 @@ class Layer:
     def alloy(self, x: float):
         return get_alloy(self.material, self.composition)
 
+    @property
+    def label(self) -> str:
+        """Short material description for tables and chart legends."""
+        if self.composition is None:
+            return self.material
+        return f"{self.material} x={self.composition:g}"
+
     def __repr__(self):
         return f"Layer({self.thickness*1e7:g} nm, {self.material})"
 
@@ -118,6 +125,11 @@ class GradedLayer(Layer):
         return (f"GradedLayer({self.thickness*1e7:g} nm, {self.material}, "
                 f"{c0:g}->{c1:g})")
 
+    @property
+    def label(self) -> str:
+        c0, c1 = self.composition
+        return f"{self.material} x={c0:g}→{c1:g}"
+
 
 class CompoundLayer(Layer):
     """A stack of layers that behaves as a single layer."""
@@ -140,6 +152,10 @@ class CompoundLayer(Layer):
                 return layer.alloy(min(max(local, 0.0), 1.0))
             acc += layer.thickness
         return self.layers[-1].alloy(1.0)
+
+    @property
+    def label(self) -> str:
+        return f"{len(self.layers)}-layer stack"
 
 
 class Contact:

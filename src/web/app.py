@@ -146,8 +146,7 @@ def layer_extents(dev: TwoTerminalDevice):
     acc = 0.0
     for layer in dev.layers:
         t = layer.thickness * 1e7
-        out.append({"label": str(layer.material), "x0_nm": acc,
-                    "x1_nm": acc + t})
+        out.append({"label": layer.label, "x0_nm": acc, "x1_nm": acc + t})
         acc += t
     return out, acc
 
@@ -360,9 +359,16 @@ def materials():
     out = []
     for name in sorted(set(BINARIES) | set(TERNARIES)):
         ternary = name in TERNARIES and name not in BINARIES
-        row: dict[str, Any] = {"name": name, "ternary": ternary}
+        # ``x_label`` names the element the composition refers to: Al_xGa_1-xAs
+        # takes x as the Al fraction, Ga_xIn_1-xAs as the Ga fraction.  Without
+        # it the front end can only say "x", which is the one number a user is
+        # most likely to get backwards.
+        alloy = get_alloy(name, 0.5 if ternary else None)
+        row: dict[str, Any] = {"name": name, "ternary": ternary,
+                               "x_label": alloy.x_label,
+                               "x_default": (alloy.x if ternary else None)}
         try:
-            p = get_alloy(name, 0.5 if ternary else None).props(300.0)
+            p = alloy.props(300.0)
             for k in ("Eg", "Eg_Gamma", "Eg_L", "Eg_X", "VBO", "CBO",
                       "dielectric", "lattice_constant", "mu_n", "mu_p",
                       "Nc", "Nv", "ni", "electron_affinity", "direct",
@@ -388,36 +394,63 @@ def properties(material: str, composition: float | None = None, T: float = 300.0
 
 @app.get("/api/presets")
 def presets():
-    """A few stacks that show off what the simulator can do."""
+    """Ready-made stacks, each with the bias window that shows it off.
+
+    The ``sweep`` block is a suggestion the front end loads together with the
+    stack: a diode wants forward bias, a photodiode wants reverse bias, and
+    the pin diode's 800-cell mesh makes a 41-point sweep needlessly slow.
+    Without it every preset inherits the same -1..1 V window, which is wrong
+    for most of them and misleading for the photodiode (it looks like a bad
+    diode because the interesting current is at negative bias).
+    """
     def L(t, m, d=0.0, c=None, c_end=None):
         return LayerSpec(thickness_nm=t, material=m, composition=c,
                          composition_end=c_end, doping=d)
 
+    def P(spec: DeviceSpec, V=0.0, iv=(-1.0, 1.2, 41),
+          cv=(-1.0, 0.5, 21)) -> dict:
+        return {**spec.model_dump(),
+                "sweep": {"V": V,
+                          "iv": {"start": iv[0], "stop": iv[1], "num": iv[2]},
+                          "cv": {"start": cv[0], "stop": cv[1], "num": cv[2]}}}
+
     return {"presets": {
-        "GaAs pn diode": DeviceSpec(
-            layers=[L(200, "GaAs", +1e17), L(200, "GaAs", -1e17)],
-            contacts=[ContactSpec(), ContactSpec()]),
-        "AlGaAs/GaAs single heterojunction": DeviceSpec(
-            layers=[L(50, "AlGaAs", +2e17, 0.3), L(20, "AlGaAs", 0.0, 0.3),
-                    L(200, "GaAs", 0.0), L(300, "GaAs", -1e16)],
-            contacts=[ContactSpec(), ContactSpec()]),
-        "Graded AlGaAs/GaAs heterojunction": DeviceSpec(
-            layers=[L(30, "GaAs", +1e17, None, None),
-                    L(40, "AlGaAs", 0.0, 0.25, 0.25),
-                    L(15, "AlGaAs", 0.0, 0.25),
-                    L(400, "GaAs", 0.0)],
-            contacts=[ContactSpec(), ContactSpec()]),
+        "GaAs pn diode": P(
+            DeviceSpec(
+                layers=[L(200, "GaAs", +1e17), L(200, "GaAs", -1e17)],
+                contacts=[ContactSpec(), ContactSpec()]),
+            V=0.8),
+        "AlGaAs/GaAs single heterojunction": P(
+            DeviceSpec(
+                layers=[L(50, "AlGaAs", +2e17, 0.3), L(20, "AlGaAs", 0.0, 0.3),
+                        L(200, "GaAs", 0.0), L(300, "GaAs", -1e16)],
+                contacts=[ContactSpec(), ContactSpec()]),
+            iv=(-1.0, 1.5, 41)),
+        "Graded AlGaAs/GaAs heterojunction": P(
+            DeviceSpec(
+                layers=[L(30, "GaAs", +1e17, None, None),
+                        # x ramps 0 -> 0.25 over 40 nm, so the conduction edge
+                        # climbs smoothly instead of stepping at the interface.
+                        # (This used to read 0.25 / 0.25, i.e. a uniform layer,
+                        # which made the "graded" preset not graded at all.)
+                        L(40, "AlGaAs", 0.0, 0.0, 0.25),
+                        L(15, "AlGaAs", 0.0, 0.25),
+                        L(400, "GaAs", 0.0)],
+                contacts=[ContactSpec(), ContactSpec()]),
+            iv=(-1.0, 1.5, 41)),
         # A modulation-doped heterojunction: donors in the wide-gap barrier
         # spill their electrons over into the undoped GaAs, where they pile
         # up in a notch narrow enough to quantise.  This is the stack the
         # quantum correction exists for -- run it with the box ticked and
         # the channel comes out ~5 nm *behind* the interface instead of on
         # it, with a sheet density of ~7e11 cm^-2.
-        "AlGaAs/GaAs HEMT (2DEG)": DeviceSpec(
-            layers=[L(30, "AlGaAs", -1e18, 0.30),
-                    L(10, "AlGaAs", 0.0, 0.30),
-                    L(500, "GaAs", 0.0)],
-            contacts=[ContactSpec(), ContactSpec()], quantum=True),
+        "AlGaAs/GaAs HEMT (2DEG)": P(
+            DeviceSpec(
+                layers=[L(30, "AlGaAs", -1e18, 0.30),
+                        L(10, "AlGaAs", 0.0, 0.30),
+                        L(500, "GaAs", 0.0)],
+                contacts=[ContactSpec(), ContactSpec()], quantum=True),
+            iv=(-1.0, 1.0, 41)),
         # The p layer is on the *right* here, so Fp/Fn have to be swapped or
         # the zero-current and C-V paths read the bias backwards.  It also
         # wants a finer mesh than the default: the 100 nm n+ InP cap sits on
@@ -428,26 +461,32 @@ def presets():
         # so lattice-matched In0.53Ga0.47As is composition 0.47.  Reading it
         # as the In fraction puts 0.53 % of mismatch on a layer that is meant
         # to be commensurate with the InP it grows on.
-        "InGaAs/InP PIN photodiode": DeviceSpec(
-            layers=[L(100, "InP", -1e18), L(1500, "GaInAs", 0.0, 0.47),
-                    L(500, "InP", +1e17)],
-            contacts=[ContactSpec(), ContactSpec()],
-            N=800, Fp="right", Fn="left"),
-        "GaAs Schottky diode": DeviceSpec(
-            layers=[L(50, "GaAs", -1e17), L(450, "GaAs", -1e16)],
-            contacts=[ContactSpec(kind="schottky", work_function=4.9),
-                      ContactSpec()]),
+        "InGaAs/InP PIN photodiode": P(
+            DeviceSpec(
+                layers=[L(100, "InP", -1e18), L(1500, "GaInAs", 0.0, 0.47),
+                        L(500, "InP", +1e17)],
+                contacts=[ContactSpec(), ContactSpec()],
+                N=800, Fp="right", Fn="left"),
+            V=-1.0, iv=(-2.0, 0.8, 31), cv=(-2.0, 0.3, 21)),
+        "GaAs Schottky diode": P(
+            DeviceSpec(
+                layers=[L(50, "GaAs", -1e17), L(450, "GaAs", -1e16)],
+                contacts=[ContactSpec(kind="schottky", work_function=4.9),
+                          ContactSpec()]),
+            V=0.5, iv=(-1.0, 1.0, 41)),
         # 1.4 % compressive strain and a doped barrier, so the well fills:
         # the gap opens by ~70 meV, the heavy hole comes to the top ~80 meV
         # above the light hole, and the electrons that spill in from the GaAs
         # are quantised into a subband holding ~6e11 cm^-2.  Both ticks are
         # set because strain and quantisation are the two halves of what a
         # real quantum well does.
-        "Strained InGaAs/GaAs quantum well (2DEG)": DeviceSpec(
-            layers=[L(20, "GaAs", -1e17), L(8, "GaInAs", 0.0, 0.8),
-                    L(20, "GaAs", -1e17)],
-            contacts=[ContactSpec(), ContactSpec()],
-            substrate="GaAs", quantum=True),
+        "Strained InGaAs/GaAs quantum well (2DEG)": P(
+            DeviceSpec(
+                layers=[L(20, "GaAs", -1e17), L(8, "GaInAs", 0.0, 0.8),
+                        L(20, "GaAs", -1e17)],
+                contacts=[ContactSpec(), ContactSpec()],
+                substrate="GaAs", quantum=True),
+            iv=(-1.0, 1.0, 41)),
     }}
 
 

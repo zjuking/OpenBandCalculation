@@ -132,6 +132,21 @@
       <p class="hint">Quantum correction applies to the equilibrium solve only.</p>
     </section>
 
+    <section class="block">
+      <div class="panel-title"><span class="num">6</span>Configuration</div>
+      <button id="importBtn" class="btn dashed wide">Import configuration (JSON)…</button>
+      <input id="importFile" type="file" accept=".json,application/json" hidden>
+      <div class="btn-pair">
+        <button id="exportJson" class="btn">Export JSON</button>
+        <button id="exportCsv" class="btn">Export CSV</button>
+      </div>
+      <p class="hint">
+        JSON carries the stack, contacts, solver settings and bias window, plus the
+        current results; re-importing restores the device exactly. CSV writes the
+        numbers behind the visible tab.
+      </p>
+    </section>
+
     <p class="sidefoot">
       Units: nm, eV, cm<sup>−3</sup>, A/cm², F/cm². Mesh N sets the finite-volume grid
       over the whole stack.
@@ -208,6 +223,11 @@
           <span class="fig">Fig. 5</span>
           <h3>Capacitance–voltage characteristic</h3>
           <span class="fig-sub">1/C² against bias (the depletion straight line) with C on the right axis</span>
+        </div>
+        <div class="sweepbar">
+          <label>Start (V) <input id="cvStart" type="number" value="-1" step="0.1"></label>
+          <label>Stop (V) <input id="cvStop"  type="number" value="0.5" step="0.1"></label>
+          <label>Points <input id="cvNum"   type="number" value="21" step="2" min="5" max="201"></label>
         </div>
         <div class="chartwrap"><div id="chartCV" class="chart"></div></div>
         <div class="readout" id="readCV"></div>
