@@ -11,39 +11,42 @@
 <header class="topbar">
   <div class="brand">
     <span class="logo">OBPDS</span>
-    <span class="tagline">Open Band Parameters Device Simulator · 1D III-V heterostructure bands / transport</span>
+    <span class="brand-text">
+      <span class="brand-name">Open Band Parameters Device Simulator</span>
+      <span class="brand-sub">1D III–V heterostructure band structure &amp; transport</span>
+    </span>
   </div>
   <div class="topbar-right">
+    <span class="chip">v2.0</span>
     <span id="status" class="status">Ready</span>
   </div>
 </header>
 
 <main class="layout">
 
-  <!-- ───────────────────────── left column: device builder ───────────────────────── -->
+  <!-- ───────────────────── left column: device builder ───────────────────── -->
   <aside class="panel side">
 
     <section class="block">
-      <h2>Preset structures</h2>
+      <div class="panel-title"><span class="num">1</span>Structure preset</div>
       <select id="preset" class="full"></select>
-      <p class="hint">Pick an example structure as a starting point.</p>
+      <p class="hint">Pick an example structure as a starting point, then edit the stack below.</p>
     </section>
 
     <section class="block">
-      <h2>Epitaxial stack <span class="sub">left (surface) to right</span></h2>
+      <div class="panel-title"><span class="num">2</span>Epitaxial stack</div>
+      <p class="hint above">Ordered from the left (surface) contact to the right contact.</p>
       <div id="layers" class="layers"></div>
-      <div class="row gap">
-        <button id="addLayer" class="btn ghost">+ Add layer</button>
-      </div>
+      <button id="addLayer" class="btn dashed wide">+ Add layer</button>
       <p class="hint">
-        This program follows the OBPDS polarity convention: with <b>p-type on the left</b>,
-        a positive bias on the left terminal is forward bias.
-        Doping sign: positive = acceptor (p), negative = donor (n).
+        Polarity convention: with <b>p-type on the left</b>, a positive bias on the left
+        terminal is forward bias. Doping sign: positive = acceptor (p), negative = donor (n).
       </p>
     </section>
 
     <section class="block">
-      <h2>Contacts</h2>
+      <div class="panel-title"><span class="num">3</span>Contacts</div>
+      <div class="contact-head"><span>Terminal</span><span>Model</span><span>Φ (eV)</span></div>
       <div class="contact">
         <label>Left</label>
         <select id="cLeft">
@@ -60,10 +63,11 @@
         </select>
         <input id="wfRight" type="number" step="0.05" value="4.90" title="Work function (eV)">
       </div>
+      <p class="hint">Work function is only used by the Schottky model.</p>
     </section>
 
     <section class="block">
-      <h2>Global parameters</h2>
+      <div class="panel-title"><span class="num">4</span>Global parameters</div>
       <div class="grid2">
         <label>Temperature T (K)
           <input id="T" type="number" value="300" step="10" min="4" max="800">
@@ -71,9 +75,9 @@
         <label>Mesh N
           <input id="N" type="number" value="400" step="100" min="50" max="4000">
         </label>
-        <label>Statistics
+        <label class="span2">Statistics
           <select id="approx">
-            <option value="kane">Kane non-parabolic + FD</option>
+            <option value="kane">Kane non-parabolic + Fermi–Dirac</option>
             <option value="fermi-dirac">Fermi–Dirac (parabolic)</option>
             <option value="boltzmann">Boltzmann</option>
           </select>
@@ -87,17 +91,12 @@
             <option value="right">Right</option>
           </select>
         </label>
-        <label class="chk"
-               title="Only active in equilibrium band diagram mode: solves Schrödinger–Poisson self-consistently, replacing the electron density with bound subbands plus a continuum correction">
-          <input id="quantum" type="checkbox">
-          Quantum correction (Schrödinger–Poisson)
-        </label>
         <label title="Number of Schrödinger eigenstates solved; states above the bound ones are folded into the continuum">Subbands
           <input id="nStates" type="number" value="8" step="1" min="2" max="32">
         </label>
         <label title="Source of the reference lattice constant for the epilayers; pseudomorphic strain is computed against it, growth direction [001]">Substrate
           <select id="substrate">
-            <option value="">None (each layer keeps its own lattice constant)</option>
+            <option value="">None (per-layer lattice constant)</option>
           </select>
         </label>
         <label title="Leave blank to use the selected material's composition; fill in to pin the substrate lattice constant (Å) directly">Substrate a (Å)
@@ -109,33 +108,40 @@
         <label>τ<sub>p</sub> (s)
           <input id="tauP" type="number" value="1e-7" step="1e-7">
         </label>
+        <label class="chk span2"
+               title="Only active in equilibrium band diagram mode: solves Schrödinger–Poisson self-consistently, replacing the electron density with bound subbands plus a continuum correction">
+          <input id="quantum" type="checkbox">
+          <span>Quantum correction (Schrödinger–Poisson)</span>
+        </label>
       </div>
-      <label class="slider">B<sub>rad</sub> = <b id="bradVal">1.0e-10</b> cm³/s
+      <label class="slider">Radiative coefficient B<sub>rad</sub> = <b id="bradVal">1.0e-10</b> cm³/s
         <input id="brad" type="range" min="-14" max="-7" step="0.1" value="-10">
       </label>
     </section>
 
-    <section class="block sticky-actions">
-      <div class="row">
-        <button id="runEq"  class="btn primary wide">Equilibrium bands</button>
+    <section class="block actions">
+      <div class="panel-title"><span class="num">5</span>Solve</div>
+      <button id="runEq"  class="btn primary wide">Equilibrium bands</button>
+      <button id="runZC" class="btn wide">Zero current (biased)</button>
+      <button id="runDD" class="btn wide">Drift–diffusion (solve current)</button>
+      <div class="btn-pair">
+        <button id="runIV" class="btn green">I–V sweep</button>
+        <button id="runCV" class="btn green">C–V sweep</button>
       </div>
-      <div class="row">
-        <button id="runZC" class="btn wide">Zero current (biased)</button>
-      </div>
-      <div class="row">
-        <button id="runDD" class="btn wide">Drift-diffusion (solve current)</button>
-      </div>
-      <div class="row">
-        <button id="runIV" class="btn accent wide">I–V sweep</button>
-      </div>
-      <div class="row">
-        <button id="runCV" class="btn accent wide">C–V sweep</button>
-      </div>
+      <p class="hint">Quantum correction applies to the equilibrium solve only.</p>
     </section>
+
+    <p class="sidefoot">
+      Units: nm, eV, cm<sup>−3</sup>, A/cm², F/cm². Mesh N sets the finite-volume grid
+      over the whole stack.
+    </p>
   </aside>
 
-  <!-- ───────────────────────── right column: results ───────────────────────── -->
+  <!-- ───────────────────── right column: results ────────────────────────── -->
   <section class="panel main">
+
+    <div id="metrics" class="metrics"></div>
+
     <nav class="tabs">
       <button class="tab active" data-tab="band">Bands</button>
       <button class="tab" data-tab="carrier">Carriers / field</button>
@@ -166,10 +172,10 @@
 
       <div id="tab-iv" class="tabpage">
         <div class="sweepbar">
-          <label>Start <input id="ivStart" type="number" value="-1" step="0.1"></label>
-          <label>Stop <input id="ivStop"  type="number" value="1"  step="0.1"></label>
+          <label>Start (V) <input id="ivStart" type="number" value="-1" step="0.1"></label>
+          <label>Stop (V) <input id="ivStop"  type="number" value="1"  step="0.1"></label>
           <label>Points <input id="ivNum"   type="number" value="41" step="2" min="5" max="201"></label>
-          <label class="chk"><input id="ivLog" type="checkbox" checked> |J| log axis</label>
+          <label class="chk"><input id="ivLog" type="checkbox" checked> <span>|J| log axis</span></label>
         </div>
         <div class="chartwrap"><div id="chartIV" class="chart"></div></div>
         <div class="readout" id="readIV"></div>
