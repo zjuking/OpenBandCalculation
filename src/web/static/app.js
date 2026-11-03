@@ -43,6 +43,36 @@ const el = (n, a = {}) => {
   return e;
 };
 
+/* Shared with styles.css: the chart has to sit on the same white card as the
+   rest of the workbench, so grid and frame colours are the light-theme greys
+   from the palette and the series are the saturated counterparts of them. */
+const PALETTE = {
+  grid: "#eef2f7",
+  gridMajor: "#e2e8f0",
+  frame: "#cbd5e0",
+  tick: "#718096",
+  band: "rgba(43, 108, 176, .035)",
+  bandAlt: "rgba(43, 108, 176, .075)",
+  bandLabel: "#a0aec0",
+  crosshair: "#2b6cb0",
+  empty: "#a0aec0",
+  ec: "#2b6cb0",   // conduction band, Γ valley
+  ecL: "#6b46c1",  // L valley
+  ecX: "#b83280",  // X valley
+  ev: "#c53030",   // valence band
+  evLH: "#dd6b20", // light hole
+  ei: "#a0aec0",   // intrinsic level
+  fn: "#2f855a",   // electron quasi-Fermi level
+  fp: "#b7791f",   // hole quasi-Fermi level
+  sub: "#d69e2e",  // confined subband
+  electron: "#2b6cb0",
+  hole: "#c53030",
+  field: "#2f855a",
+  current: "#2f855a",
+  cap: "#2b6cb0",
+  invcap: "#b7791f",
+};
+
 function niceTicks(lo, hi, n = 6) {
   if (!(hi > lo)) return [lo];
   const raw = (hi - lo) / n;
@@ -65,6 +95,43 @@ function decadeTicks(lo, hi) {
   return out;
 }
 
+/* Decades are written with the typographic minus, so "1e−3" sits on the
+   same baseline as "−0.5" instead of mixing a hyphen with a minus sign. */
+function expStr(e) {
+  return String(e).replace("-", "−");
+}
+
+/* One number format per axis.  Mixing "1.20e+5" with "80000" on the same
+   axis is the usual tell of an unformatted plot: pick the exponent from the
+   largest tick and scale every label by it, or fall back to a fixed number
+   of decimals when the axis is plainly linear. */
+function makeTickLabel(ticks) {
+  const nums = ticks.map(t => (typeof t === "number" ? t : t.v))
+    .filter(v => isFinite(v));
+  const mag = nums.length
+    ? Math.max(...nums.map(Math.abs)) : 0;
+
+  if (mag >= 1e4 || (mag > 0 && mag < 1e-2)) {
+    const e = Math.floor(Math.log10(mag));
+    const scale = 10 ** e;
+    return (v) => {
+      if (!v) return "0";
+      return (v / scale).toFixed(1) + "e" + expStr(e);
+    };
+  }
+
+  const sorted = nums.slice().sort((a, b) => a - b);
+  let step = 0;
+  for (let i = 1; i < sorted.length; i++) {
+    const d = Math.abs(sorted[i] - sorted[i - 1]);
+    if (d > 1e-12) { step = d; break; }
+  }
+  const dec = step > 0
+    ? Math.max(0, Math.min(4, -Math.floor(Math.log10(step) + 1e-9)))
+    : 2;
+  return (v) => v.toFixed(dec).replace("-", "−");
+}
+
 /**
  * Draw a line chart into `host`.
  *
@@ -84,9 +151,11 @@ function drawChart(host, cfg) {
 
   const vis = cfg.series.filter(s => !s.hidden && s.data && s.data.length);
   if (!vis.length || !cfg.x || !cfg.x.length) {
-    svg.appendChild(el("text", { x: W / 2, y: H / 2, fill: "#8b98b0",
+    svg.appendChild(el("rect", { x: m.l, y: m.t, width: iw, height: ih,
+      fill: PALETTE.grid, stroke: PALETTE.frame, "stroke-dasharray": "4 4" }));
+    svg.appendChild(el("text", { x: W / 2, y: H / 2, fill: PALETTE.empty,
       "text-anchor": "middle", "font-size": 12 }))
-      .textContent = "No data — solve on the left first";
+      .textContent = "No data yet — solve on the left and the curve appears here";
     return;
   }
 
@@ -94,19 +163,23 @@ function drawChart(host, cfg) {
   if (x1 - x0 < 1e-12) { x0 -= 1; x1 += 1; }
   const sx = (v) => m.l + (v - x0) / (x1 - x0) * iw;
 
+  /* Log scaling is per axis: the carrier chart has a log left axis and a
+     linear right axis, so asking cfg.ylog for the y2 span silently put the
+     field series on a log scale it was never drawn on. */
+  const isLog = (axis) => axis === "y2" ? !!cfg.y2log : !!cfg.ylog;
+
   const span = (axis) => {
     let lo = Infinity, hi = -Infinity;
     for (const s of vis) {
       if ((s.axis || "y") !== axis) continue;
       for (const v of s.data) {
         if (!isFinite(v)) continue;
-        if (cfg.ylog || (axis === "y2" && cfg.y2log)) { if (v <= 0) continue; }
+        if (isLog(axis) && v <= 0) continue;
         lo = Math.min(lo, v); hi = Math.max(hi, v);
       }
     }
     if (!isFinite(lo)) return [0, 1];
-    const log = cfg.ylog || (axis === "y2" && cfg.y2log);
-    if (log) {
+    if (isLog(axis)) {
       const a = Math.log10(lo), b = Math.log10(hi);
       const pad = Math.max((b - a) * 0.08, 0.35);
       return [a - pad, b + pad];
@@ -138,11 +211,11 @@ function drawChart(host, cfg) {
     if (c <= a) return;
     svg.appendChild(el("rect", {
       x: a, y: m.t, width: c - a, height: ih,
-      fill: i % 2 ? "#ffffff07" : "#4da3ff0c", stroke: "#26314a",
-      "stroke-dasharray": "3 3",
+      fill: i % 2 ? PALETTE.bandAlt : PALETTE.band,
+      stroke: PALETTE.frame, "stroke-dasharray": "3 3",
     }));
     if (c - a > 46) {
-      const t = el("text", { x: (a + c) / 2, y: m.t + 12, fill: "#7f8ca4",
+      const t = el("text", { x: (a + c) / 2, y: m.t + 12, fill: PALETTE.bandLabel,
         "font-size": 10, "text-anchor": "middle" });
       t.textContent = b.label;
       svg.appendChild(t);
@@ -151,52 +224,59 @@ function drawChart(host, cfg) {
 
   /* grid + y axis */
   const yTicks = cfg.ylog ? decadeTicks(ya, yb) : niceTicks(ya, yb, 6).map(v => ({ v, major: true }));
+  const yLabel = cfg.ylog ? null : makeTickLabel(yTicks);
   for (const tk of yTicks) {
     const v = cfg.ylog ? 10 ** tk.v : tk.v;
     const y = sy(v);
     if (y < m.t - 2 || y > m.t + ih + 2) continue;
     svg.appendChild(el("line", { x1: m.l, x2: m.l + iw, y1: y, y2: y,
-      stroke: tk.major ? "#1e2637" : "#161d2b", "stroke-width": 1 }));
+      stroke: tk.major ? PALETTE.gridMajor : PALETTE.grid, "stroke-width": 1 }));
     if (tk.major) {
-      const t = el("text", { x: m.l - 8, y: y + 3.5, fill: "#8b98b0",
+      const t = el("text", { x: m.l - 8, y: y + 3.5, fill: PALETTE.tick,
         "font-size": 10.5, "text-anchor": "end" });
       t.textContent = cfg.ylog
-        ? (tk.v >= 0 ? "1e" + tk.v : "1e" + tk.v)
-        : fmt(v, 3);
+        ? "1e" + expStr(tk.v)
+        : yLabel(v);
       svg.appendChild(t);
     }
   }
-  /* x axis */
-  for (const v of niceTicks(x0, x1, 7)) {
+  /* x axis — decimals follow the tick step, so 50 and 100 do not end up as
+     "50.00" and "100.0" side by side */
+  const xTicks = niceTicks(x0, x1, 7);
+  const xLabel = makeTickLabel(xTicks);
+  for (const v of xTicks) {
     const x = sx(v);
     svg.appendChild(el("line", { x1: x, x2: x, y1: m.t, y2: m.t + ih,
-      stroke: "#161d2b" }));
-    const t = el("text", { x, y: m.t + ih + 16, fill: "#8b98b0",
+      stroke: PALETTE.grid }));
+    const t = el("text", { x, y: m.t + ih + 16, fill: PALETTE.tick,
       "font-size": 10.5, "text-anchor": "middle" });
-    t.textContent = fmt(v, 4);
+    t.textContent = xLabel(v);
     svg.appendChild(t);
   }
   /* right axis */
   if (vis.some(s => s.axis === "y2")) {
-    for (const tk of (cfg.y2log ? decadeTicks(y2a, y2b) : niceTicks(y2a, y2b, 5).map(v => ({ v, major: true })))) {
+    const t2 = cfg.y2log ? decadeTicks(y2a, y2b)
+      : niceTicks(y2a, y2b, 5).map(v => ({ v, major: true }));
+    const l2 = cfg.y2log ? null : makeTickLabel(t2);
+    for (const tk of t2) {
       const v = cfg.y2log ? 10 ** tk.v : tk.v;
       const y = sy2(v);
       if (y < m.t - 2 || y > m.t + ih + 2 || !tk.major) continue;
-      const t = el("text", { x: m.l + iw + 8, y: y + 3.5, fill: "#8b98b0",
+      const t = el("text", { x: m.l + iw + 8, y: y + 3.5, fill: PALETTE.tick,
         "font-size": 10.5 });
-      t.textContent = cfg.y2log ? "1e" + tk.v : fmt(v, 3);
+      t.textContent = cfg.y2log ? "1e" + expStr(tk.v) : l2(v);
       svg.appendChild(t);
     }
   }
 
   /* frame + labels */
   svg.appendChild(el("rect", { x: m.l, y: m.t, width: iw, height: ih,
-    fill: "none", stroke: "#26314a" }));
-  const xl = el("text", { x: m.l + iw / 2, y: H - 6, fill: "#8b98b0",
+    fill: "none", stroke: PALETTE.frame }));
+  const xl = el("text", { x: m.l + iw / 2, y: H - 6, fill: PALETTE.tick,
     "font-size": 11, "text-anchor": "middle" });
   xl.textContent = cfg.xlabel || "";
   svg.appendChild(xl);
-  const yl = el("text", { x: 14, y: m.t + ih / 2, fill: "#8b98b0",
+  const yl = el("text", { x: 14, y: m.t + ih / 2, fill: PALETTE.tick,
     "font-size": 11, "text-anchor": "middle",
     transform: `rotate(-90 14 ${m.t + ih / 2})` });
   yl.textContent = cfg.ylabel || "";
@@ -220,7 +300,7 @@ function drawChart(host, cfg) {
   }
 
   /* hover crosshair */
-  const cl = el("line", { y1: m.t, y2: m.t + ih, stroke: "#4da3ff",
+  const cl = el("line", { y1: m.t, y2: m.t + ih, stroke: PALETTE.crosshair,
     "stroke-dasharray": "2 3", opacity: 0 });
   svg.appendChild(cl);
   const hit = el("rect", { x: m.l, y: m.t, width: iw, height: ih,
@@ -432,8 +512,12 @@ async function refreshInfo(box, L) {
   const info = box.querySelector('[data-f="info"]');
   if (!meta) { info.textContent = ""; return; }
   try {
+    // Sending composition= empty hits a 422 on the float parameter, so the
+    // key is only added when the layer actually has a composition.
+    const comp = (L.composition === undefined || L.composition === null)
+      ? "" : `&composition=${L.composition}`;
     const p = await api(`/api/properties?material=${encodeURIComponent(L.material)}` +
-      `&composition=${L.composition ?? ""}&T=${+$("T").value || 300}`);
+      `${comp}&T=${+$("T").value || 300}`);
     info.textContent = `Eg ${fmt(p.Eg, 4)} eV · ${p.direct ? "direct" : "indirect"} gap` +
       ` · a ${fmt(p.lattice_constant, 5)} Å · εr ${fmt(p.dielectric, 3)}` +
       ` · μn ${fmt(p.mu_n, 3)} / μp ${fmt(p.mu_p, 3)} cm²/Vs`;
@@ -502,6 +586,21 @@ async function doSolve(mode) {
   }
 }
 
+/* An I–V sweep has a current in hand, so the strip should not keep saying
+   "not solved for current" next to a finished curve. */
+function updateCurrentMetric(sw) {
+  const J = sw.J || [];
+  let k = -1;
+  for (let i = 0; i < J.length; i++) if (isFinite(J[i])) k = i;
+  const cards = $("metrics").children;
+  if (k < 0 || cards.length < 5) return;
+  cards[4].className = "metric amber";
+  cards[4].innerHTML =
+    `<div class="m-label">Current density</div>` +
+    `<div class="m-val">${fmt(J[k], 3)}<small>A/cm²</small></div>` +
+    `<div class="m-sub">at V = ${fmt(sw.V[k], 3)} V</div>`;
+}
+
 async function doSweep(kind) {
   const body = {
     device: readDevice(),
@@ -514,7 +613,7 @@ async function doSweep(kind) {
     const res = await runJob("sweep", { url: "/api/sweep", body },
       kind === "iv" ? "I–V sweep" : "C–V sweep");
     state.sweep = { kind, ...res };
-    if (kind === "iv") { drawIV(); switchTab("iv"); }
+    if (kind === "iv") { drawIV(); updateCurrentMetric(res); switchTab("iv"); }
     else { drawCV(); switchTab("cv"); }
     setStatus(`${kind.toUpperCase()} sweep complete`, "ok");
   } catch (e) {
@@ -541,21 +640,21 @@ function bandSeries(s) {
   const split = valenceSplit(s);
   const hh_lh = split > 2e-3;              // 2 meV
   const out = [
-    { name: "Ec (Γ)", data: s.Ec_Gamma, color: "#4da3ff", width: 2 },
-    { name: "Ec (L)", data: s.Ec_L, color: "#a78bfa", width: 1.2, dash: "5 3" },
-    { name: "Ec (X)", data: s.Ec_X, color: "#f472b6", width: 1.2, dash: "2 3" },
+    { name: "Ec (Γ)", data: s.Ec_Gamma, color: PALETTE.ec, width: 2 },
+    { name: "Ec (L)", data: s.Ec_L, color: PALETTE.ecL, width: 1.2, dash: "5 3" },
+    { name: "Ec (X)", data: s.Ec_X, color: PALETTE.ecX, width: 1.2, dash: "2 3" },
   ];
   if (hh_lh) {
-    out.push({ name: "Ev (heavy hole)", data: s.Ev_HH, color: "#ff6b6b", width: 2 });
-    out.push({ name: "Ev (light hole)", data: s.Ev_LH, color: "#ff9f7a",
+    out.push({ name: "Ev (heavy hole)", data: s.Ev_HH, color: PALETTE.ev, width: 2 });
+    out.push({ name: "Ev (light hole)", data: s.Ev_LH, color: PALETTE.evLH,
                width: 1.6, dash: "6 3" });
   } else {
-    out.push({ name: "Ev", data: s.Ev, color: "#ff6b6b", width: 2 });
+    out.push({ name: "Ev", data: s.Ev, color: PALETTE.ev, width: 2 });
   }
   out.push(
-    { name: "Ei", data: s.Ei, color: "#7f8ca4", width: 1, dash: "1 3" },
-    { name: "Fn", data: s.Fn, color: "#37d67a", width: 1.8 },
-    { name: "Fp", data: s.Fp, color: "#ffb648", width: 1.8 },
+    { name: "Ei", data: s.Ei, color: PALETTE.ei, width: 1, dash: "1 3" },
+    { name: "Fn", data: s.Fn, color: PALETTE.fn, width: 1.8 },
+    { name: "Fp", data: s.Fp, color: PALETTE.fp, width: 1.8 },
   );
   return out.concat(quantSeries(s));
 }
@@ -571,16 +670,99 @@ function quantSeries(s) {
       if (!sub.bound || !sub.bound[i]) return;
       out.push({
         name: `E${i} subband`, data: new Array(n).fill(E),
-        color: "#ffd166", width: 1.6, dash: "6 3",
+        color: PALETTE.sub, width: 1.6, dash: "6 3",
       });
     });
   }
   return out;
 }
 
+/* ── metric strip ────────────────────────────────────────────────────────
+   Six cards across the top of the results panel.  They stay in place with a
+   dash placeholder before the first solve, so the panel does not jump when
+   numbers arrive. */
+
+const APPROX_LABEL = {
+  "kane": "Kane",
+  "fermi-dirac": "F–D",
+  "boltzmann": "Boltz.",
+};
+
+function metric(cls, label, value, unit, sub, idle) {
+  return `<div class="metric ${cls}${idle ? " idle" : ""}">` +
+    `<div class="m-label">${label}</div>` +
+    `<div class="m-val">${value}${unit ? `<small>${unit}</small>` : ""}</div>` +
+    `<div class="m-sub">${sub || "&nbsp;"}</div></div>`;
+}
+
+function renderMetrics(s) {
+  const host = $("metrics");
+  if (!s) {
+    host.innerHTML =
+      metric("blue", "Temperature", "—", "", "K", true) +
+      metric("violet", "Statistics", "—", "", "carrier model", true) +
+      metric("green", "Min band gap", "—", "", "E<sub>c</sub> − E<sub>v</sub>", true) +
+      metric("red", "Peak field", "—", "", "V/cm", true) +
+      metric("amber", "Current density", "—", "", "A/cm²", true) +
+      metric("slate", "Mesh", "—", "", "finite-volume cells", true);
+    return;
+  }
+
+  const meta = s.meta || {};
+  const kT = meta.kT ? meta.kT * 1000 : NaN;
+
+  const Ec = s.Ec_Gamma || [];
+  const Ev = s.Ev || [];
+  // The smallest local separation, not min(Ec) - max(Ev): the latter mixes two
+  // different depths and reports the band bending rather than a gap.
+  let gap = NaN;
+  if (Ec.length && Ev.length && Ec.length === Ev.length) {
+    gap = Infinity;
+    for (let i = 0; i < Ec.length; i++) {
+      const d = Ec[i] - Ev[i];
+      if (isFinite(d) && d < gap) gap = d;
+    }
+    if (!isFinite(gap)) gap = NaN;
+  }
+
+  let fmax = NaN, fpos = NaN;
+  if (s.field && s.field.length) {
+    const a = s.field.map(Math.abs);
+    let k = 0;
+    for (let i = 1; i < a.length; i++) if (a[i] > a[k]) k = i;
+    fmax = a[k];
+    fpos = (s.x_nm || [])[k];
+  }
+
+  let J = NaN, Jsub = "not solved for current";
+  if (s.J !== undefined && s.J !== null) {
+    J = s.J;
+    Jsub = `Jn ${fmt(s.Jn_contact, 3)} · Jp ${fmt(s.Jp_contact, 3)}`;
+  } else if (s.Jtotal && s.Jtotal.length) {
+    J = s.Jtotal[Math.floor(s.Jtotal.length / 2)];
+    Jsub = "midpoint of the device";
+  }
+
+  const step = (s.total_nm && meta.N) ? s.total_nm / meta.N : NaN;
+
+  host.innerHTML =
+    metric("blue", "Temperature", fmt(meta.T, 4), "K",
+      `kT = ${fmt(kT, 3)} meV`) +
+    metric("violet", "Statistics", APPROX_LABEL[meta.approx] || "—", "",
+      meta.approx === "kane" ? "non-parabolic + F–D" : "carrier model") +
+    metric("green", "Min band gap", fmt(gap, 3), "eV", "E<sub>c</sub> − E<sub>v</sub>") +
+    metric("red", "Peak field", fmt(fmax, 3), "V/cm",
+      isFinite(fpos) ? `at ${fmt(fpos, 1)} nm` : "&nbsp;") +
+    metric("amber", "Current density", fmt(J, 3), "A/cm²", Jsub) +
+    metric("slate", "Mesh", meta.N ? String(meta.N) : "—", "",
+      isFinite(step) ? `step ${fmt(step, 3)} nm` : "&nbsp;");
+}
+
+
 function drawSolution() {
   const s = state.solution;
   if (!s) return;
+  renderMetrics(s);
   const bands = (s.layers || []).map(b =>
     ({ x0: b.x0_nm, x1: b.x1_nm, label: b.label }));
 
@@ -593,32 +775,43 @@ function drawSolution() {
   state.charts.carrier = {
     x: s.x_nm, ylog: true,
     series: [
-      { name: "n", data: s.n, color: "#4da3ff", width: 2 },
-      { name: "p", data: s.p, color: "#ff6b6b", width: 2 },
-      { name: "n (L valley)", data: s.n_L, color: "#a78bfa", width: 1.1, dash: "4 3" },
-      { name: "n (X valley)", data: s.n_X, color: "#f472b6", width: 1.1, dash: "2 3" },
+      { name: "n", data: s.n, color: PALETTE.electron, width: 2 },
+      { name: "p", data: s.p, color: PALETTE.hole, width: 2 },
+      { name: "n (L valley)", data: s.n_L, color: PALETTE.ecL, width: 1.1, dash: "4 3" },
+      { name: "n (X valley)", data: s.n_X, color: PALETTE.ecX, width: 1.1, dash: "2 3" },
       { name: "|E|", data: (s.field || []).map(Math.abs),
-        color: "#37d67a", width: 1.4, axis: "y2" },
+        color: PALETTE.field, width: 1.4, axis: "y2" },
     ], bands, xlabel: "Depth (nm)", ylabel: "Concentration (cm⁻³)",
     y2label: "|E| (V/cm)", legend: "legendCarrier",
   };
   drawChart($("chartCarrier"), state.charts.carrier);
 
   /* readouts */
-  const dE = s.Ec_Gamma ? Math.min(...s.Ec_Gamma) - Math.max(...s.Ev) : NaN;
+  // Smallest local separation between the two edges along the stack; taking
+  // min(Ec) - max(Ev) would subtract two different depths and report the band
+  // bending as if it were a gap.
+  let dE = NaN;
+  if (s.Ec_Gamma && s.Ev && s.Ec_Gamma.length === s.Ev.length) {
+    dE = Infinity;
+    for (let i = 0; i < s.Ec_Gamma.length; i++) {
+      const d = s.Ec_Gamma[i] - s.Ev[i];
+      if (isFinite(d) && d < dE) dE = d;
+    }
+    if (!isFinite(dE)) dE = NaN;
+  }
   const Emax = s.field ? Math.max(...s.field.map(Math.abs)) : NaN;
   $("readBand").innerHTML =
     `<b>${s.mode || ""}</b> · V = ${fmt(s.V, 3)} V · T = ${s.meta.T} K · ` +
     `kT = ${fmt(s.meta.kT, 4)} eV · N = ${s.meta.N} · ${s.meta.approx} · ` +
     `Mesh step ${fmt((s.total_nm || 0) / s.meta.N, 3)} nm · ` +
     `min gap ${fmt(dE, 4)} eV · |E|max ${fmt(Emax, 4)} V/cm` +
-    (s.converged === false ? ` · <span style="color:#ff6b6b">not converged</span>` : "");
+    (s.converged === false ? ` · <span style="color:#c53030">not converged</span>` : "");
 
   const split = valenceSplit(s);
   if (split > 2e-3) {
     const heavy = s.Ev_HH[0] >= s.Ev_LH[0];
     $("readBand").innerHTML +=
-      ` · <b style="color:#ff9f7a">pseudomorphic strain</b>: HH–LH split ` +
+      ` · <b style="color:#dd6b20">pseudomorphic strain</b>: HH–LH split ` +
       `<b>${fmt(split * 1000, 1)}</b> meV (${heavy ? "heavy hole" : "light hole"} on top)`;
   }
 
@@ -626,10 +819,10 @@ function drawSolution() {
   if (sub && sub.levels_eV) {
     const lv = sub.levels_eV.filter((_, i) => !sub.bound || sub.bound[i]);
     $("readBand").innerHTML += lv.length
-      ? ` · <b style="color:#ffd166">quantum correction</b>: ${lv.length} bound subbands ` +
+      ? ` · <b style="color:#b7791f">quantum correction</b>: ${lv.length} bound subbands ` +
         `(${lv.map(e => fmt(e, 4)).join(", ")} eV) · sheet density ` +
         `<b>${fmt(sub.sheet_density_cm2, 4)}</b> cm⁻²`
-      : ` · <b style="color:#ffd166">quantum correction</b>: no bound states (this structure ` +
+      : ` · <b style="color:#b7791f">quantum correction</b>: no bound states (this structure ` +
         `confines no carriers, so the density falls back to the classical result)`;
   }
 
@@ -658,7 +851,7 @@ function drawIV() {
   const data = log ? J.map(v => (isFinite(v) && v !== 0 ? Math.abs(v) : NaN)) : J;
   state.charts.iv = {
     x: V, ylog: log,
-    series: [{ name: log ? "|J|" : "J", data, color: "#37d67a", width: 2 }],
+    series: [{ name: log ? "|J|" : "J", data, color: PALETTE.current, width: 2 }],
     xlabel: "Bias V (V)", ylabel: log ? "|J| (A/cm²)" : "J (A/cm²)",
   };
   drawChart($("chartIV"), state.charts.iv);
@@ -681,8 +874,8 @@ function drawCV() {
     x: V,
     series: [
       { name: "1/C²", data: C.map(c => (c > 0 ? 1 / (c * c) : NaN)),
-        color: "#4da3ff", width: 2 },
-      { name: "C", data: C, color: "#ffb648", width: 1.6, axis: "y2" },
+        color: PALETTE.cap, width: 2 },
+      { name: "C", data: C, color: PALETTE.invcap, width: 1.6, axis: "y2" },
     ],
     xlabel: "Bias V (V)", ylabel: "1/C² (cm⁴/F²)", y2label: "C (F/cm²)",
   };
@@ -693,8 +886,8 @@ function drawCV() {
     : "no finite results";
 }
 
-const WF_COLORS = ["#ffd166", "#4da3ff", "#37d67a", "#f472b6",
-                   "#a78bfa", "#ff6b6b", "#7dd3fc", "#fb923c"];
+const WF_COLORS = ["#d69e2e", "#2b6cb0", "#2f855a", "#b83280",
+                   "#6b46c1", "#c53030", "#3182ce", "#dd6b20"];
 
 /* |psi|^2 of the bound subbands.  Only meaningful after a quantum solve;
    the classical path ships no wavefunctions, so say so instead of drawing
@@ -711,9 +904,15 @@ function drawWF() {
   const psi = (sub && sub.psi) || [];
   if (!psi.length || !(s.x_nm || []).length || psi[0].length !== s.x_nm.length) {
     state.charts.wf = null;
-    host.innerHTML =
-      `<div class="hint">Tick "quantum correction" and re-solve the equilibrium bands;<br>` +
-      `the |ψ|² distribution of each bound subband will be drawn here.</div>`;
+    // Two different reasons for an empty panel: the quantum branch never ran,
+    // or it ran and this stack simply confines nothing.  Say which.
+    host.innerHTML = s.n_is_quantum
+      ? `<div class="chart-empty"><div>The quantum solve ran, but this stack confines no ` +
+        `bound states, so the electron density stays classical. Try a structure with a ` +
+        `type-I well such as the AlGaAs/GaAs HEMT preset.</div></div>`
+      : `<div class="chart-empty"><div>Tick the <b>quantum correction</b> box and ` +
+        `re-solve the equilibrium bands — the |ψ|² distribution of each bound subband ` +
+        `is drawn here.</div></div>`;
     $("legendWF").innerHTML = "";
     $("readWF").innerHTML = "";
     return;
@@ -786,15 +985,23 @@ async function drawTable() {
 
 /* ────────────────────────────── tabs ───────────────────────────────────── */
 
+/* An empty chart still has to look deliberate: one dashed frame and a line of
+   instruction, otherwise the panel reads as broken. */
+const EMPTY_CFG = { x: [], series: [], bands: [], legend: null };
+
 function switchTab(name) {
   document.querySelectorAll(".tab").forEach(t =>
     t.classList.toggle("active", t.dataset.tab === name));
   document.querySelectorAll(".tabpage").forEach(p =>
     p.classList.toggle("active", p.id === "tab-" + name));
-  if (name === "band" && state.charts.band) drawChart($("chartBand"), state.charts.band);
-  if (name === "carrier" && state.charts.carrier) drawChart($("chartCarrier"), state.charts.carrier);
-  if (name === "iv") drawIV();
-  if (name === "cv") drawCV();
+  if (name === "band") drawChart($("chartBand"), state.charts.band || EMPTY_CFG);
+  if (name === "carrier") drawChart($("chartCarrier"), state.charts.carrier || EMPTY_CFG);
+  if (name === "iv") {
+    if (state.charts.iv) drawIV(); else drawChart($("chartIV"), EMPTY_CFG);
+  }
+  if (name === "cv") {
+    if (state.charts.cv) drawCV(); else drawChart($("chartCV"), EMPTY_CFG);
+  }
   if (name === "wf") drawWF();
   if (name === "table") drawTable();
 }
@@ -804,12 +1011,13 @@ function switchTab(name) {
 async function init() {
   const mat = await api("/api/materials");
   state.materials = mat.materials;
+  renderMetrics(null);
 
   // Anything in the catalogue can be a wafer.  Ternaries need a composition
   // the layer editor does not offer here, so they are listed but resolve at
   // the default x = 0.5 unless the user pins a lattice constant instead.
   $("substrate").innerHTML =
-    `<option value="">None (each layer keeps its own lattice constant)</option>` +
+    `<option value="">None (per layer)</option>` +
     mat.materials.map(m =>
       `<option value="${m.name}">${m.name}` +
       `${m.ternary ? " (x=0.5)" : ""}</option>`).join("");
@@ -822,6 +1030,16 @@ async function init() {
     sel.onchange = () => {
       writeDevice(pre.presets[sel.value]);
       state.solution = null; state.sweep = null;
+      // A new stack invalidates every curve on screen; blank them rather than
+      // leave the previous structure's bands under a new header.
+      state.charts = { band: null, carrier: null, iv: null, cv: null, wf: null };
+      renderMetrics(null);
+      ["chartBand", "chartCarrier", "chartIV", "chartCV"].forEach(id => {
+        $(id).innerHTML = "";
+      });
+      ["legendBand", "legendCarrier", "legendWF"].forEach(id => { $(id).innerHTML = ""; });
+      ["readBand", "readCarrier", "readIV", "readCV", "readWF"].forEach(id => { $(id).innerHTML = ""; });
+      drawChart($("chartBand"), EMPTY_CFG);
       setStatus("Loaded " + sel.value);
       drawTable();
     };
@@ -862,6 +1080,9 @@ async function init() {
   });
 
   setStatus("Ready", "ok");
+  // The band tab is visible from the first frame, so give it the dashed
+  // "no data yet" frame rather than an empty white box.
+  drawChart($("chartBand"), EMPTY_CFG);
 }
 
 init().catch(e => setStatus("Initialisation failed: " + e.message, "err"));

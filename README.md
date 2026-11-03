@@ -9,6 +9,8 @@ Kane non-parabolic statistics, multiple valleys, damped Newton iteration — fix
 its physical and numerical defects, and adds the drift-diffusion transport the
 original never had, so that I–V characteristics can be computed at all.
 
+![OBPDS web workbench](docs/web-ui.png)
+
 ## Quick start
 
 ```bash

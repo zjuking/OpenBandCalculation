@@ -3,17 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OBPDS · III-V heterostructure band structure and transport</title>
+<title>OBPDS · III–V heterostructure band structure and transport</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232b6cb0'/%3E%3Ctext x='16' y='22' font-family='system-ui,sans-serif' font-size='13' font-weight='700' fill='%23ffffff' text-anchor='middle'%3EOB%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 
 <header class="topbar">
   <div class="brand">
-    <span class="logo">OBPDS</span>
+    <span class="logo">OB<span>PDS</span></span>
     <span class="brand-text">
       <span class="brand-name">Open Band Parameters Device Simulator</span>
-      <span class="brand-sub">1D III–V heterostructure band structure &amp; transport</span>
+      <span class="brand-sub">1D III–V heterostructure band structure and drift–diffusion transport</span>
     </span>
   </div>
   <div class="topbar-right">
@@ -63,7 +64,7 @@
         </select>
         <input id="wfRight" type="number" step="0.05" value="4.90" title="Work function (eV)">
       </div>
-      <p class="hint">Work function is only used by the Schottky model.</p>
+      <p class="hint">The work function is only used by the Schottky model.</p>
     </section>
 
     <section class="block">
@@ -94,11 +95,6 @@
         <label title="Number of Schrödinger eigenstates solved; states above the bound ones are folded into the continuum">Subbands
           <input id="nStates" type="number" value="8" step="1" min="2" max="32">
         </label>
-        <label title="Source of the reference lattice constant for the epilayers; pseudomorphic strain is computed against it, growth direction [001]">Substrate
-          <select id="substrate">
-            <option value="">None (per-layer lattice constant)</option>
-          </select>
-        </label>
         <label title="Leave blank to use the selected material's composition; fill in to pin the substrate lattice constant (Å) directly">Substrate a (Å)
           <input id="substrateA" type="number" placeholder="auto">
         </label>
@@ -107,6 +103,11 @@
         </label>
         <label>τ<sub>p</sub> (s)
           <input id="tauP" type="number" value="1e-7" step="1e-7">
+        </label>
+        <label class="span2" title="Source of the reference lattice constant for the epilayers; pseudomorphic strain is computed against it, growth direction [001]">Substrate
+          <select id="substrate">
+            <option value="">None (per layer)</option>
+          </select>
         </label>
         <label class="chk span2"
                title="Only active in equilibrium band diagram mode: solves Schrödinger–Poisson self-consistently, replacing the electron density with bound subbands plus a continuum correction">
@@ -152,25 +153,46 @@
     </nav>
 
     <div class="tabbody">
+
       <div id="tab-band" class="tabpage active">
+        <div class="chart-head">
+          <span class="fig">Fig. 1</span>
+          <h3>Band diagram</h3>
+          <span class="fig-sub">E<sub>c</sub>, E<sub>v</sub>, quasi-Fermi levels and confined subbands along the growth direction</span>
+        </div>
         <div class="chartwrap"><div id="chartBand" class="chart"></div></div>
         <div class="legend" id="legendBand"></div>
         <div class="readout" id="readBand"></div>
       </div>
 
       <div id="tab-carrier" class="tabpage">
+        <div class="chart-head">
+          <span class="fig">Fig. 2</span>
+          <h3>Carrier density and field</h3>
+          <span class="fig-sub">Electron and hole concentrations on a log axis, electric field on the right axis</span>
+        </div>
         <div class="chartwrap"><div id="chartCarrier" class="chart"></div></div>
         <div class="legend" id="legendCarrier"></div>
         <div class="readout" id="readCarrier"></div>
       </div>
 
       <div id="tab-wf" class="tabpage">
+        <div class="chart-head">
+          <span class="fig">Fig. 3</span>
+          <h3>Confined wavefunctions</h3>
+          <span class="fig-sub">|ψ|² of each bound subband, normalised to its own peak</span>
+        </div>
         <div class="chartwrap"><div id="chartWF" class="chart"></div></div>
         <div class="legend" id="legendWF"></div>
         <div class="readout" id="readWF"></div>
       </div>
 
       <div id="tab-iv" class="tabpage">
+        <div class="chart-head">
+          <span class="fig">Fig. 4</span>
+          <h3>Current–voltage characteristic</h3>
+          <span class="fig-sub">Terminal current density against bias, solved point by point</span>
+        </div>
         <div class="sweepbar">
           <label>Start (V) <input id="ivStart" type="number" value="-1" step="0.1"></label>
           <label>Stop (V) <input id="ivStop"  type="number" value="1"  step="0.1"></label>
@@ -182,11 +204,21 @@
       </div>
 
       <div id="tab-cv" class="tabpage">
+        <div class="chart-head">
+          <span class="fig">Fig. 5</span>
+          <h3>Capacitance–voltage characteristic</h3>
+          <span class="fig-sub">1/C² against bias (the depletion straight line) with C on the right axis</span>
+        </div>
         <div class="chartwrap"><div id="chartCV" class="chart"></div></div>
         <div class="readout" id="readCV"></div>
       </div>
 
       <div id="tab-table" class="tabpage">
+        <div class="chart-head">
+          <span class="fig">Table 1</span>
+          <h3>Layer parameters</h3>
+          <span class="fig-sub">Material constants, pseudomorphic strain and critical thickness for the current stack</span>
+        </div>
         <div id="layerTable" class="tablewrap"></div>
       </div>
     </div>
