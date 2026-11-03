@@ -15,7 +15,7 @@ original never had, so that I–V characteristics can be computed at all.
 
 ```bash
 pip install -e ".[web]"
-obpds-web                      # opens http://127.0.0.1:8000
+obpds-web                      # serves http://127.0.0.1:8000
 # or
 uvicorn web.app:app --reload
 ```
@@ -52,6 +52,27 @@ exposed. Every other parameter feeds derived quantities — `ni`, `Nc`, `Nv`, th
 non-parabolicity coefficient — and a half-updated set is worse than none, so
 change those directly in `src/obpds/materials/data.py`. A misspelled key raises
 `ValueError` rather than being silently ignored.
+
+## Web workbench
+
+`obpds-web` serves a single-page workbench that calls the same solver as the
+Python API. The front end is hand-written HTML/CSS/JS with no build step, no CDN
+and no bundler, so it runs offline and from a plain `uvicorn` reload. Every
+simulation is dispatched to a worker thread and polled, which keeps the page
+responsive and lets an I–V sweep report progress point by point.
+
+| Panel | Contents |
+| --- | --- |
+| Structure preset | Seven ready-made stacks, from a GaAs pn diode to a strained InGaAs/GaAs quantum well |
+| Epitaxial stack | Per-layer editor: material and alloy composition, thickness, p/n/i doping with a slider, live Eg / lattice constant / mobility readout |
+| Contacts | Ohmic or Schottky per terminal, with the work function where the model uses it |
+| Global parameters | Temperature, mesh size, statistics (Kane non-parabolic / Fermi–Dirac / Boltzmann), bias, p-side, substrate and strain reference, lifetimes, radiative coefficient |
+| Results | Six metric cards (temperature, statistics, minimum gap, peak field, current density, mesh) over six tabs: bands, carriers and field, confined wavefunctions, I–V, C–V, layer parameters |
+
+Every plot is inline SVG drawn from the same palette as the page, with layer
+boundaries shaded, a hover crosshair readout and clickable legend entries.
+
+![I–V sweep in the OBPDS web workbench](docs/web-results.png)
 
 ## Physics
 
@@ -207,6 +228,16 @@ heavy-hole mass is in fact anisotropic); relaxation is not modelled; piezoelectr
 charge exists only for [111] growth and is not modelled; the nitrides have
 elastic constants but no deformation potentials, so strain is computed but the
 bands do not move, and the layer table flags this.
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `src/obpds/` | The solver: `layer.py` and `device.py` (stack and contacts), `solver.py` (Poisson, equilibrium, zero-current), `transport.py` (drift–diffusion, I–V, C–V), `newton.py` (damped Newton), `quantum.py` (Schrödinger–Poisson), `strain.py` (Bir–Pikus, Matthews–Blakeslee), `fermi.py`, `materials/` |
+| `src/web/` | `app.py` (FastAPI: job queue, `/api/solve`, `/api/sweep`, `/api/describe`) and `static/` — the three front-end files |
+| `tests/` | The validation suites (`validate_*.py`), the in-process API contract test, and `dev/` for throwaway diagnostics |
+| `examples/` | `comprehensive_run.py` and its pinned output for diffing |
+| `docs/` | Screenshots used in this README |
 
 ## Validation
 

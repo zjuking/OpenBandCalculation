@@ -895,7 +895,14 @@ const WF_COLORS = ["#d69e2e", "#2b6cb0", "#2f855a", "#b83280",
 function drawWF() {
   const s = state.solution;
   const host = $("chartWF");
-  if (!s) return;
+  if (!s) {
+    host.innerHTML =
+      `<div class="chart-empty"><div>Solve the equilibrium bands first — the confined ` +
+      `states are only known once the potential is.</div></div>`;
+    $("legendWF").innerHTML = "";
+    $("readWF").innerHTML = "";
+    return;
+  }
   const sub = s.subbands;
   const idx = [];
   if (sub && sub.levels_eV) {
